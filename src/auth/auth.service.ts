@@ -51,10 +51,18 @@ export class AuthService {
     return {
       message: 'Login successfully',
       access_token: await this.jwtService.signAsync(payload, {
-        secret: process.env.JWT_SECRET, // ✅ usar o valor real
-        expiresIn: process.env.JWT_EXPIRATION, // opcional, mas bom manter consistência
+        secret: process.env.JWT_SECRET, 
+        expiresIn: process.env.JWT_EXPIRATION, 
       })
     };
-
   }
+
+  async verifyToken(token: string) {
+    try {
+      return this.jwtService.verify(token, { secret: process.env.JWT_SECRET });
+    } catch {
+      throw new UnauthorizedException();
+    }
+  }
+
 }
