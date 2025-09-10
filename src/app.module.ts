@@ -5,12 +5,14 @@ import { MySqlConfigService } from './config/db.config.service';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './User/user.module';
 import { ClientModule } from './client/client.module';
+import { CarModule } from './car/car.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     UserModule,
     ClientModule,
+    CarModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useClass: MySqlConfigService,
