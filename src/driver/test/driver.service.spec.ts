@@ -18,6 +18,7 @@ describe('DriverService', () => {
   };
 
   const mockRepo = {
+    create: jest.fn().mockImplementation((dto) => dto), 
     save: jest.fn(),
     find: jest.fn(),
     update: jest.fn(),

@@ -12,15 +12,10 @@ export class DriverService {
     private readonly driverRepository: Repository<DriverEntity>,
   ) { }
 
-  async createDriver(data: CreateDriverDto) {
-    const driver = new DriverEntity();
-    driver.name = data.name;
-    driver.email = data.email;
-    driver.cpf = data.cpf;
-    driver.paymentType = data.paymentType;
-
-    return this.driverRepository.save(driver);
-  }
+ async createDriver(data: CreateDriverDto) {
+  const driver = this.driverRepository.create(data);
+  return this.driverRepository.save(driver);
+}
 
   async getDrivers() {
     return this.driverRepository.find();
