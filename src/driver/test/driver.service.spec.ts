@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { DriverService } from './driver.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { DriverEntity } from 'src/driver/driver.entity';
+import { DriverEntity } from '../../driver/driver.entity';
+import { DriverService } from '../driver.service';
+import { PaymentType } from '../../enums/PaymentType';
 
 describe('DriverService', () => {
   let service: DriverService;
@@ -13,7 +14,7 @@ describe('DriverService', () => {
     name: 'João Silva',
     email: 'joao@example.com',
     cpf: '123.456.789-00',
-    paymentType: 'Mensal',
+    paymentType: PaymentType.MONTHLY,
   };
 
   const mockRepo = {
@@ -42,7 +43,7 @@ describe('DriverService', () => {
       name: 'João Silva',
       email: 'joao@example.com',
       cpf: '123.456.789-00',
-      paymentType: 'Mensal',
+      paymentType: PaymentType.MONTHLY,
     });
 
     expect(result).toEqual(mockDriver);

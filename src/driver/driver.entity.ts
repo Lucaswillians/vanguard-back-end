@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from 'typeorm';
-import { PaymentType } from 'src/enums/PaymentType';
+import { PaymentType } from '../enums/PaymentType';
 
 @Entity('drivers')
 export class DriverEntity {
