@@ -41,7 +41,7 @@ describe('DriverController', () => {
     const result = await controller.postDriver(dto);
 
     expect(result).toEqual({
-      user: mockResult,
+      driver: mockResult,
       message: 'Driver created with success!',
     });
     expect(mockService.createDriver).toHaveBeenCalledWith(dto);

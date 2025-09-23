@@ -1,20 +1,37 @@
-import { Body, Controller, Get, Inject, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
 import { DriverService } from './driver.service';
 import { CreateDriverDto } from './dto/CreateDriver.dto';
+import { UpdateDriverDto } from './dto/UpdateDriver.dto';
+import { GetDriverDto } from './dto/GetDriver.dto';
 
 @Controller('/driver')
 export class DriverController {
-  @Inject()
-  private readonly driverService: DriverService;
+  constructor(private readonly driverService: DriverService) { }
+
+  private formatResponse(driver: any, message: string) {
+    return { driver, message };
+  }
 
   @Post()
-  async postDriver(@Body() dto: CreateDriverDto) {
+  async postDriver(@Body() dto: CreateDriverDto): Promise<{ driver: GetDriverDto; message: string }> {
     const driver = await this.driverService.createDriver(dto);
-    return { user: driver, message: 'Driver created with success!' };
+    return this.formatResponse(driver, 'Driver created with success!');
   }
 
   @Get()
-  async getDrivers() {
-    return await this.driverService.getDrivers();
+  async getDrivers(): Promise<GetDriverDto[]> {
+    return this.driverService.getDrivers();
+  }
+
+  @Put('/:id')
+  async updateDriver(@Param('id') id: string, @Body() dto: UpdateDriverDto): Promise<{ driver: GetDriverDto; message: string }> {
+    const driver = await this.driverService.updateDriver(id, dto);
+    return this.formatResponse(driver, 'Driver updated with success!');
+  }
+
+  @Delete('/:id')
+  async deleteDriver(@Param('id') id: string): Promise<{ driver: GetDriverDto; message: string }> {
+    const driver = await this.driverService.deleteDriver(id);
+    return this.formatResponse(driver, 'Driver deleted with success!');
   }
 }
