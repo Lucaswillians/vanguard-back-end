@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DriverService } from '../driver.service';
 import { CreateDriverDto } from '../dto/CreateDriver.dto';
-import { PaymentType } from 'src/enums/PaymentType';
+import { PaymentType } from '../../enums/PaymentType';
+import { DriverController } from '../driver.controller';
 
 describe('DriverController', () => {
   let controller: DriverController;
