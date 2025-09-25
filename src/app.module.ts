@@ -7,6 +7,7 @@ import { UserModule } from './User/user.module';
 import { ClientModule } from './client/client.module';
 import { CarModule } from './car/car.module';
 import { DriverModule } from './driver/driver.module';
+import { BudgetModule } from './budget/budget.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { DriverModule } from './driver/driver.module';
     ClientModule,
     CarModule,
     DriverModule,
+    BudgetModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useClass: MySqlConfigService,
