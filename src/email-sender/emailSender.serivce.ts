@@ -25,7 +25,6 @@ export class EmailSenderService {
 
     try {
       await transporter.sendMail(mailOptions);
-      console.log(`E-mail enviado para ${to}`);
     }
     catch (error) {
       console.error('Erro ao enviar e-mail:', error);
