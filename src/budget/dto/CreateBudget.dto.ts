@@ -3,9 +3,9 @@ import { IsEmail, IsNotEmpty, IsString, Matches, MinLength } from "class-validat
 export class CreateBudgetDto {
   @IsString()
   @IsNotEmpty()
-  readonly model: string;
+  readonly origin: string;
 
   @IsEmail()
   @IsNotEmpty()
-  readonly plate: string;
+  readonly destiny: string;
 }

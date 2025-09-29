@@ -2,17 +2,19 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { BudgetController } from './budget.controller';
-import { GeocodeService } from 'src/geocode/geocode.service';
 import { HttpModule } from '@nestjs/axios';
 import { BudgetService } from './budget.service';
-import { GeocodeModule } from 'src/geocode/geocode.module';
+import { GeocodeApiModule } from 'src/geocodeApi/geocodeApi.module';
+import { GasApiService } from 'src/gasApi/gasApi.service';
+import { GasApiModule } from 'src/gasApi/gasApi.module';
 
 @Module({
   imports: [
     // TypeOrmModule.forFeature([CarEntity]),
     // forwardRef(() => AuthModule),
     HttpModule,
-    GeocodeModule,
+    GeocodeApiModule,
+    GasApiModule,
   ],
   controllers: [BudgetController],
   providers: [BudgetService],

@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 
 @Injectable()
-export class GeocodeService {
+export class GeocodeApiService {
   @Inject()
   private readonly http: HttpService
 
