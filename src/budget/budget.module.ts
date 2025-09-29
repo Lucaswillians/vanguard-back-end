@@ -7,6 +7,7 @@ import { BudgetService } from './budget.service';
 import { GeocodeApiModule } from 'src/geocodeApi/geocodeApi.module';
 import { GasApiService } from 'src/gasApi/gasApi.service';
 import { GasApiModule } from 'src/gasApi/gasApi.module';
+import { EmailSenderModule } from 'src/email-sender/emailSender.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { GasApiModule } from 'src/gasApi/gasApi.module';
     HttpModule,
     GeocodeApiModule,
     GasApiModule,
+    EmailSenderModule,
   ],
   controllers: [BudgetController],
   providers: [BudgetService],

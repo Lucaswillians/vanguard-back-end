@@ -14,4 +14,15 @@ export class BudgetController {
   async diesel() {
     return this.budgetService.GetDiesel();
   }
+
+  @Post('Email')
+  async sendEmail(@Body() emailData: { to: string; subject: string; text: string }) {
+    await this.budgetService.EmailSender(
+      emailData.to,
+      emailData.subject,
+      emailData.text,
+    );
+
+    return { message: 'E-mail enviado com sucesso.' };
+  }
 }

@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { GeocodeApiService } from '../geocodeApi/geocodeApi.service';
 import { GasApiService } from 'src/gasApi/gasApi.service';
+import { EmailSenderService } from 'src/email-sender/emailSender.serivce';
 
 @Injectable()
 export class BudgetService {
   constructor(
     private readonly geocodeApiService: GeocodeApiService,
     private readonly gasApiService: GasApiService,
+    private readonly emailSender: EmailSenderService,
     private readonly http: HttpService,
   ) { }
 
@@ -37,5 +39,9 @@ export class BudgetService {
 
   async GetDiesel( ) {
     return await this.gasApiService.getDieselSC();
+  }
+
+  async EmailSender(to: string, subject: string, text: string) {
+    return await this.emailSender.sendEmail(to, subject, text);
   }
 }
