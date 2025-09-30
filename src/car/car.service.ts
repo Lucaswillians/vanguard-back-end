@@ -16,13 +16,14 @@ export class CarService {
 
     carEntity.model = carData.model
     carEntity.plate = carData.plate
+    carEntity.consumption = carData.consumption
 
     return this.carRepository.save(carEntity)
   }
 
   async getCar() {
     const savedCar = await this.carRepository.find();
-    const carList = savedCar.map((car) => new GetCarDto(car.id, car.model, car.plate));
+    const carList = savedCar.map((car) => new GetCarDto(car.id, car.model, car.plate, car.consumption));
 
     return carList;
   }

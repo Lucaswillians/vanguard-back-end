@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, Matches, MinLength } from "class-validator";
+import { IsEmail, IsNotEmpty, IsNumber, IsString, Matches, Max, Min, MinLength } from "class-validator";
 
 export class CreateCarDto {
   @IsString()
@@ -8,4 +8,9 @@ export class CreateCarDto {
   @IsEmail()
   @IsNotEmpty()
   readonly plate: string;
+
+  @IsNumber()
+  @Min(0)
+  @Max(50)
+  readonly consumption: number;
 }

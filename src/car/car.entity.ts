@@ -8,8 +8,11 @@ export class CarEntity {
   @Column({ name: 'nome', length: 100, nullable: false })
   model: string;
 
-  @Column({ name: 'email', length: 70, nullable: false })
+  @Column({ name: 'plate', length: 70, nullable: false })
   plate: string;
+
+  @Column({ type: 'float' })
+  consumption: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: string;
