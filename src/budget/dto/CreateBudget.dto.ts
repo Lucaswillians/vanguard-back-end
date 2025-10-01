@@ -1,11 +1,24 @@
-import { IsEmail, IsNotEmpty, IsString, Matches, MinLength } from "class-validator";
+import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Matches } from 'class-validator';
+import { BudgetStatus } from 'src/enums/BudgetStatus';
 
 export class CreateBudgetDto {
   @IsString()
   @IsNotEmpty()
-  readonly origin: string;
+  origem: string;
 
-  @IsEmail()
+  @IsString()
   @IsNotEmpty()
-  readonly destiny: string;
+  destino: string;
+
+  @IsDateString()
+  data_hora_viagem: Date;
+
+  @IsInt()
+  cliente_id: number;
+
+  @IsInt()
+  driver_id: number;
+
+  @IsInt()
+  car_id: number;
 }

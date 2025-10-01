@@ -12,16 +12,22 @@ export class GasApiService {
     try {
       const response = await firstValueFrom(this.http.get(this.BASE_URL));
 
-      const precoSC = response?.data?.precos?.diesel?.sc;
+      const precoString = response?.data?.precos?.diesel?.sc;
 
-      if (!precoSC) {
+      if (!precoString) {
         throw new Error('Preço do diesel em SC não encontrado');
+      }
+
+      const preco = parseFloat(precoString.replace(',', '.')); // substitui vírgula por ponto caso venha no formato brasileiro
+
+      if (isNaN(preco)) {
+        throw new Error('Preço do diesel em SC inválido');
       }
 
       return {
         estado: 'SC',
         combustivel: 'Diesel',
-        preco: precoSC,
+        preco, // agora é número
         data_coleta: response.data?.data_coleta,
         fonte: response.data?.fonte,
       };

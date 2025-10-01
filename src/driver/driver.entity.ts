@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, OneToMany } from 'typeorm';
 import { PaymentType } from '../enums/PaymentType';
+import { BudgetEntity } from 'src/budget/budget.entity';
 
 @Entity('drivers')
 export class DriverEntity {
@@ -26,4 +27,7 @@ export class DriverEntity {
 
   @DeleteDateColumn({ name: 'deleted_at' })
   deletedAt: string;
+
+  @OneToMany(() => BudgetEntity, (budget) => budget.car)
+  budgets: BudgetEntity[];
 }

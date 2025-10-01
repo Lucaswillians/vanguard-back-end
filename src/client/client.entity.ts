@@ -1,3 +1,4 @@
+import { BudgetEntity } from "src/budget/budget.entity";
 import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, OneToMany } from "typeorm";
 
 @Entity({ name: 'client' })
@@ -22,4 +23,7 @@ export class ClientEntity {
 
   @DeleteDateColumn({ name: 'deleted_at' })
   deletedAt: string;
+
+  @OneToMany(() => BudgetEntity, (budget) => budget.car)
+  budgets: BudgetEntity[];
 }
