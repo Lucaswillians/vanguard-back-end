@@ -6,29 +6,53 @@ import { CarEntity } from 'src/car/car.entity';
 
 @Entity({ name: 'budgets' })
 export class BudgetEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'varchar', length: 255 })
-  origem: string;
+  origin: string;
 
   @Column({ type: 'varchar', length: 255 })
-  destino: string;
+  destiny: string;
 
   @Column({ type: 'timestamp' })
-  data_hora_viagem: Date;
+  date_hour_trip: Date;
+
+  @Column({ type: 'timestamp' })
+  date_hour_return_trip: Date;
 
   @Column({ type: 'float', nullable: true })
-  distancia_total?: number;
+  total_distance: number;
 
   @Column({ type: 'float', nullable: true })
-  preco_viagem?: number;
+  trip_price: number;
 
   @Column({ type: 'float', nullable: true })
-  lucro?: number;
+  desired_profit: number;
+
+  @Column({ type: 'int', nullable: false })
+  days_out: number;
+
+  @Column({ type: 'float' })
+  toll?: number;
+
+  @Column({ type: 'float', nullable: false })
+  fixed_cost: number;
+
+  @Column({ type: 'float' })
+  extra_cost: number;
 
   @Column({ type: 'enum', enum: BudgetStatus, default: BudgetStatus.PENDING })
   status: BudgetStatus;
+
+  @Column({ type: 'float', nullable: true })
+  tax?: number;
+
+  @Column({ type: 'int', nullable: false, default: 1 })
+  number_of_drivers: number;
+
+  @Column({ type: 'boolean', default: false })
+  houveLucro: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: string;

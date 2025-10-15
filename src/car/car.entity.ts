@@ -15,6 +15,9 @@ export class CarEntity {
   @Column({ type: 'float' })
   consumption: number;
 
+  @Column({ type: 'float' })
+  fixed_cost: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: string;
 

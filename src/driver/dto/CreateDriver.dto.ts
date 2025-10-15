@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsString, Matches, MinLength } from "class-validator";
+import { IsEmail, IsEnum, IsNotEmpty, IsNumber, IsString, Matches, Min, MinLength } from "class-validator";
 import { PaymentType } from "../../enums/PaymentType";
 
 export class CreateDriverDto {
@@ -19,4 +19,10 @@ export class CreateDriverDto {
 
   @IsEnum(PaymentType)
   readonly paymentType: PaymentType
+
+  @IsNumber()
+  readonly driverCost: number;
+
+  @IsNumber()
+  readonly dailyPriceDriver: number
 }

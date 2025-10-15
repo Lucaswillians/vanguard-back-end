@@ -1,27 +1,31 @@
 import { BudgetStatus } from 'src/enums/BudgetStatus';
 
 export class GetBudgetDto {
-  id: number;
+  constructor(
 
-  origem: string;
-
-  destino: string;
-
-  data_hora_viagem: Date;
-
-  cliente_id: number;
-
-  driver_id: number;
-
-  car_id: number;
-
-  distancia_total: number; 
-  
-  preco_viagem: number;    
-
-  lucro: number;           
-
-  status: BudgetStatus;
-
-  criado_em: Date;
+    readonly id: string,
+    
+    readonly origem: string,
+    
+    readonly destino: string,
+    
+    readonly data_hora_viagem: Date,
+    
+    readonly date_hour_return_trip: Date,
+    
+    readonly cliente_id: string,
+    
+    readonly driver_id: string,
+    
+    readonly car_id: string,
+    
+    readonly distancia_total: number,
+    
+    readonly preco_viagem: number,
+    
+    readonly lucro: number,
+    
+    readonly status: BudgetStatus,
+  )
+  {}
 }

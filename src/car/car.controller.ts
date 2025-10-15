@@ -14,7 +14,7 @@ export class CarController {
     const carCreated = await this.carService.createCar(carData)
 
     return {
-      user: new GetCarDto(carCreated.id, carCreated.model, carCreated.plate, carCreated.consumption),
+      user: new GetCarDto(carCreated.id, carCreated.model, carCreated.plate, carCreated.consumption, carCreated.fixed_cost),
       message: 'Car created with success!'
     };
   };

@@ -19,6 +19,12 @@ export class DriverEntity {
   @Column({ type: 'enum', enum: PaymentType })
   paymentType: PaymentType;
 
+  @Column({ type: 'float', nullable: false })
+  driverCost: number
+
+  @Column({ type: 'float', nullable: false })
+  dailyPriceDriver: number
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: string;
 

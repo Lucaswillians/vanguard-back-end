@@ -1,40 +1,43 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body, Get, Inject, Put, Param } from '@nestjs/common';
 import { BudgetService } from './budget.service';
 import { CreateBudgetDto } from './dto/CreateBudget.dto';
+import { BudgetEntity } from './budget.entity';
+import { GetBudgetDto } from './dto/GetBudget.dto';
+import { UpdateBudgetDto } from './dto/UpdateBudget.dto';
 
 @Controller('budget')
 export class BudgetController {
-  constructor(private readonly budgetService: BudgetService) { }
+  @Inject()
+  private readonly budgetService: BudgetService
 
-  // Calcula apenas a distância entre origem e destino
-  @Post('calculate-distance')
-  async calculateDistance(@Body() body: { origem: string; destino: string }) {
-    return this.budgetService.calculateDistance(body.origem, body.destino);
+  @Get('mock')
+  async getMockBudget() {
+    return this.budgetService.createBudgetMock();
   }
 
-  // Retorna o preço do diesel
-  @Get('diesel')
-  async diesel() {
-    return this.budgetService.getDieselPrice();
-  }
-
-  // Envia e-mail
-  @Post('email')
-  async sendEmail(@Body() emailData: { to: string; subject: string; text: string }) {
-    await this.budgetService.EmailSender(emailData.to, emailData.subject, emailData.text);
-    return { message: 'E-mail enviado com sucesso.' };
-  }
-
-  // Cria um orçamento
-  @Post('calculate')
-  async createBudget(@Body() budgetDto: CreateBudgetDto) {
-    const budget = await this.budgetService.createBudget(budgetDto);
+  @Post()
+  async create(@Body() dto: CreateBudgetDto): Promise<BudgetEntity> {
+    const budget = await this.budgetService.createBudget(dto);
     return budget;
   }
 
-  // Lista todos os orçamentos
-  @Get('calculate')
-  async getBudgets() {
-    return this.budgetService.getBudgets();
+  @Get()
+  async getClient() {
+    return await this.budgetService.getAllBudgets();
   }
+
+  @Put(':id')
+  async updateBudget(
+    @Param('id') id: string,
+    @Body() updateBudgetDto: UpdateBudgetDto,
+  ) {
+    const updatedBudget = await this.budgetService.updateBudget(id, updateBudgetDto);
+    return {
+      message: 'Budget updated successfully!',
+      data: updatedBudget,
+    };
+  }
+
+
+
 }

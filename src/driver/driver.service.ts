@@ -21,6 +21,12 @@ export class DriverService {
     return this.driverRepository.find();
   }
 
+  async findById(id: string): Promise<DriverEntity> {
+    const driver = await this.driverRepository.findOne({ where: { id } });
+    if (!driver) throw new Error('Driver not found');
+    return driver;
+  }
+
   async updateDriver(id: string, newData: UpdateDriverDto) {
     return this.driverRepository.update(id, newData);
   }

@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsNumber, IsString, Matches, Max, Min, MinLength } from "class-validator";
+import { IsEmail, IsNotEmpty, IsNumber, IsString, Matches, Max, Min, MinLength, isNumber } from "class-validator";
 
 export class CreateCarDto {
   @IsString()
@@ -13,4 +13,9 @@ export class CreateCarDto {
   @Min(0)
   @Max(50)
   readonly consumption: number;
+
+  @IsNumber()
+  @Min(0)
+  @Max(50)
+  readonly fixedCost: number;
 }

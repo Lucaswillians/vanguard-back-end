@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Matches } from 'class-validator';
+import { IsDateString, IsEnum, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Matches } from 'class-validator';
 import { BudgetStatus } from 'src/enums/BudgetStatus';
 
 export class CreateBudgetDto {
@@ -13,12 +13,36 @@ export class CreateBudgetDto {
   @IsDateString()
   data_hora_viagem: Date;
 
-  @IsInt()
-  cliente_id: number;
+  @IsDateString()
+  data_hora_viagem_retorno: Date;
 
   @IsInt()
-  driver_id: number;
+  diasFora: number;
+
+  @IsNumber()
+  pedagio: number;
+
+  @IsNumber()
+  lucroDesejado: number;
+  
+  @IsNumber()
+  impostoPercent: number;
 
   @IsInt()
-  car_id: number;
+  numMotoristas: number;
+
+  @IsNumber()
+  custoExtra: number;
+
+  @IsEnum(BudgetStatus)
+  readonly budgetStatus: BudgetStatus
+
+  @IsInt()
+  cliente_id: string;
+
+  @IsInt()
+  driver_id: string;
+
+  @IsInt()
+  car_id: string;
 }

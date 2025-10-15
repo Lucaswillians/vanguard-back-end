@@ -10,6 +10,9 @@ import { BudgetEntity } from './budget.entity';
 import { ClientEntity } from 'src/client/client.entity';
 import { DriverEntity } from 'src/driver/driver.entity';
 import { CarEntity } from 'src/car/car.entity';
+import { DriverModule } from 'src/driver/driver.module';
+import { ClientModule } from 'src/client/client.module';
+import { CarModule } from 'src/car/car.module';
 
 @Module({
   imports: [
@@ -18,6 +21,9 @@ import { CarEntity } from 'src/car/car.entity';
     GeocodeApiModule,
     GasApiModule,
     EmailSenderModule,
+    DriverModule,
+    ClientModule,
+    CarModule,
   ],
   controllers: [BudgetController],
   providers: [BudgetService],

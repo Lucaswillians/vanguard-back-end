@@ -17,15 +17,22 @@ export class CarService {
     carEntity.model = carData.model
     carEntity.plate = carData.plate
     carEntity.consumption = carData.consumption
+    carEntity.fixed_cost = carData.fixedCost
 
     return this.carRepository.save(carEntity)
   }
 
   async getCar() {
     const savedCar = await this.carRepository.find();
-    const carList = savedCar.map((car) => new GetCarDto(car.id, car.model, car.plate, car.consumption));
+    const carList = savedCar.map((car) => new GetCarDto(car.id, car.model, car.plate, car.consumption, car.fixed_cost));
 
     return carList;
+  }
+
+  async findById(id: string): Promise<CarEntity> {
+    const car = await this.carRepository.findOne({ where: { id } });
+    if (!car) throw new Error('Car not found'); 
+    return car;
   }
 
   async updateCar(id: string, newData: UpdateCarDto) {
