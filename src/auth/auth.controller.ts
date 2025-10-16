@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Post, Req, Res, UnauthorizedException } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { RateLimiterService } from "./rate-limiter/rateLimiter.service";
-import { CreateUserDto } from "src/User/dto/CreateUser.dto";
+import { CreateUserDto } from "../User/dto/CreateUser.dto";
 import { Request, Response } from "express";
 
 @Controller('/auth')

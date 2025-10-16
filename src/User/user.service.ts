@@ -2,7 +2,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Inject, Injectable, NotFoundException, UseGuards, forwardRef } from "@nestjs/common";
 import { UserEntity } from "./user.entity";
-import { AuthService } from "src/auth/auth.service";
+import { AuthService } from "../auth/auth.service";
 import { GetUserDto } from "./dto/GetUset.dto";
 import { UpdateUserDto } from "./dto/UpdateUser.dto";
 import { CreateUserDto } from "./dto/CreateUser.dto";
