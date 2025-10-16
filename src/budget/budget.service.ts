@@ -3,15 +3,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BudgetEntity } from './budget.entity';
 import { GeocodeApiService } from '../geocodeApi/geocodeApi.service';
-import { GasApiService } from 'src/gasApi/gasApi.service';
+import { GasApiService } from '../gasApi/gasApi.service';
 import { CreateBudgetDto } from './dto/CreateBudget.dto';
 import { HttpService } from '@nestjs/axios';
-import { EmailSenderService } from 'src/email-sender/emailSender.serivce';
-import { CarService } from 'src/car/car.service';
-import { DriverService } from 'src/driver/driver.service';
-import { BudgetStatus } from 'src/enums/BudgetStatus';
+import { EmailSenderService } from '../email-sender/emailSender.serivce';
+import { CarService } from '../car/car.service';
+import { DriverService } from '../driver/driver.service';
+import { BudgetStatus } from '../enums/BudgetStatus';
 import { GetBudgetDto } from './dto/GetBudget.dto';
 import { UpdateBudgetDto } from './dto/UpdateBudget.dto';
+import { GetTripDetails } from './dto/GetTripDetails.dto';
 
 @Injectable()
 export class BudgetService {
@@ -151,6 +152,17 @@ export class BudgetService {
       budget.date_hour_trip, budget.date_hour_return_trip, 
       budget.cliente.name, budget.driver.name, budget.car.model, budget.total_distance,
       budget.trip_price, budget.desired_profit, budget.status,
+    ));
+
+    return budgetList;
+  }
+
+  async getAllTrips() {
+    const savedBudget = await this.budgetRepository.find({ relations: ['cliente', 'driver', 'car'] });
+    const budgetList = savedBudget.map((budget) => new GetTripDetails(
+      budget.id, budget.origin, budget.destiny,
+      budget.date_hour_trip, budget.date_hour_return_trip,
+      budget.cliente.name, budget.driver.name, budget.car.model, budget.total_distance,
     ));
 
     return budgetList;

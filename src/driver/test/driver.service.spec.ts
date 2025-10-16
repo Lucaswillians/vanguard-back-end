@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { DriverEntity } from '../../driver/driver.entity';
 import { DriverService } from '../driver.service';
 import { PaymentType } from '../../enums/PaymentType';
+import { BudgetEntity } from '../../budget/budget.entity';
 
 describe('DriverService', () => {
   let service: DriverService;
@@ -15,14 +16,20 @@ describe('DriverService', () => {
     email: 'joao@example.com',
     cpf: '123.456.789-00',
     paymentType: PaymentType.MONTHLY,
+    driverCost: 5500,
+    dailyPriceDriver: 250
   };
 
   const mockRepo = {
-    create: jest.fn().mockImplementation((dto) => dto), 
+    create: jest.fn().mockImplementation((dto) => dto),
     save: jest.fn(),
     find: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
+  };
+
+  const mockBudgetRepo = {
+    find: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -30,6 +37,7 @@ describe('DriverService', () => {
       providers: [
         DriverService,
         { provide: getRepositoryToken(DriverEntity), useValue: mockRepo },
+        { provide: getRepositoryToken(BudgetEntity), useValue: mockBudgetRepo },
       ],
     }).compile();
 
@@ -45,6 +53,8 @@ describe('DriverService', () => {
       email: 'joao@example.com',
       cpf: '123.456.789-00',
       paymentType: PaymentType.MONTHLY,
+      driverCost: 5500,
+      dailyPriceDriver: 250
     });
 
     expect(result).toEqual(mockDriver);

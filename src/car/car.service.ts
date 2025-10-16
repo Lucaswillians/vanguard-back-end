@@ -17,7 +17,7 @@ export class CarService {
     carEntity.model = carData.model
     carEntity.plate = carData.plate
     carEntity.consumption = carData.consumption
-    carEntity.fixed_cost = carData.fixedCost
+    carEntity.fixed_cost = carData.fixed_cost
 
     return this.carRepository.save(carEntity)
   }

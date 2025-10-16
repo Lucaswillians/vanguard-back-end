@@ -1,5 +1,5 @@
 import { IsDateString, IsEnum, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Matches } from 'class-validator';
-import { BudgetStatus } from 'src/enums/BudgetStatus';
+import { BudgetStatus } from '../../enums/BudgetStatus';
 
 export class CreateBudgetDto {
   @IsString()

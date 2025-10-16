@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, OneToMany } from 'typeorm';
 import { PaymentType } from '../enums/PaymentType';
-import { BudgetEntity } from 'src/budget/budget.entity';
+import { BudgetEntity } from '../budget/budget.entity';
 
 @Entity('drivers')
 export class DriverEntity {

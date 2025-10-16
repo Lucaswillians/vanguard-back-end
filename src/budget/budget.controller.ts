@@ -22,8 +22,13 @@ export class BudgetController {
   }
 
   @Get()
-  async getClient() {
+  async getAllBudgets() {
     return await this.budgetService.getAllBudgets();
+  }
+
+  @Get('trips')
+  async getAllTrips() {
+    return await this.budgetService.getAllTrips();
   }
 
   @Put(':id')
@@ -37,7 +42,4 @@ export class BudgetController {
       data: updatedBudget,
     };
   }
-
-
-
 }

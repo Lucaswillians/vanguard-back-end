@@ -17,5 +17,5 @@ export class CreateCarDto {
   @IsNumber()
   @Min(0)
   @Max(50)
-  readonly fixedCost: number;
+  readonly fixed_cost: number;
 }

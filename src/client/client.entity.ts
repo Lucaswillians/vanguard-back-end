@@ -1,4 +1,4 @@
-import { BudgetEntity } from "src/budget/budget.entity";
+import { BudgetEntity } from "../budget/budget.entity";
 import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, OneToMany } from "typeorm";
 
 @Entity({ name: 'client' })

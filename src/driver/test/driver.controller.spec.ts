@@ -33,6 +33,8 @@ describe('DriverController', () => {
       email: 'joao@example.com',
       cpf: '123.456.789-00',
       paymentType: PaymentType.MONTHLY,
+      driverCost: 5500,
+      dailyPriceDriver: 250
     };
 
     const mockResult = { id: '1', ...dto };

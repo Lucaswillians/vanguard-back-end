@@ -1,6 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { IsEnum, IsNumber, IsOptional } from 'class-validator';
-import { BudgetStatus } from 'src/enums/BudgetStatus';
+import { BudgetStatus } from '../../enums/BudgetStatus';
 import { CreateBudgetDto } from './CreateBudget.dto';
 
 export class UpdateBudgetDto extends PartialType(CreateBudgetDto) {

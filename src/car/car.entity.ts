@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, OneToMany } from "typeorm";
-import { BudgetEntity } from "src/budget/budget.entity";
+import { BudgetEntity } from "../budget/budget.entity";
 
 @Entity({ name: 'car' })
 export class CarEntity {

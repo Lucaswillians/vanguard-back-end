@@ -5,7 +5,7 @@ import { DriverEntity } from './driver.entity';
 import { DriverController } from './driver.controller';
 import { DriverService } from './driver.service';
 import { BudgetModule } from 'src/budget/budget.module';
-import { BudgetEntity } from 'src/budget/budget.entity';
+import { BudgetEntity } from '../budget/budget.entity';
 
 @Module({
   imports: [

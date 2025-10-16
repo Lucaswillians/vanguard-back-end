@@ -4,15 +4,15 @@ import { BudgetController } from './budget.controller';
 import { BudgetService } from './budget.service';
 import { HttpModule } from '@nestjs/axios';
 import { GeocodeApiModule } from 'src/geocodeApi/geocodeApi.module';
-import { GasApiModule } from 'src/gasApi/gasApi.module';
-import { EmailSenderModule } from 'src/email-sender/emailSender.module';
+import { GasApiModule } from '../gasApi/gasApi.module';
+import { EmailSenderModule } from '../email-sender/emailSender.module';
 import { BudgetEntity } from './budget.entity';
-import { ClientEntity } from 'src/client/client.entity';
-import { DriverEntity } from 'src/driver/driver.entity';
-import { CarEntity } from 'src/car/car.entity';
-import { DriverModule } from 'src/driver/driver.module';
-import { ClientModule } from 'src/client/client.module';
-import { CarModule } from 'src/car/car.module';
+import { ClientEntity } from '../client/client.entity';
+import { DriverEntity } from '../driver/driver.entity';
+import { CarEntity } from '../car/car.entity';
+import { DriverModule } from '../driver/driver.module';
+import { ClientModule } from '../client/client.module';
+import { CarModule } from '../car/car.module';
 
 @Module({
   imports: [

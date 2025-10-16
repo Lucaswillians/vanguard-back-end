@@ -4,7 +4,7 @@ import { Between, Repository } from 'typeorm';
 import { DriverEntity } from './driver.entity';
 import { CreateDriverDto } from './dto/CreateDriver.dto';
 import { UpdateDriverDto } from './dto/UpdateDriver.dto';
-import { BudgetEntity } from 'src/budget/budget.entity';
+import { BudgetEntity } from '../budget/budget.entity';
 
 @Injectable()
 export class DriverService {

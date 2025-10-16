@@ -1,8 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { BudgetStatus } from 'src/enums/BudgetStatus';
-import { ClientEntity } from 'src/client/client.entity';
-import { DriverEntity } from 'src/driver/driver.entity';
-import { CarEntity } from 'src/car/car.entity';
+import { BudgetStatus } from '../enums/BudgetStatus';
+import { ClientEntity } from '../client/client.entity';
+import { DriverEntity } from '../driver/driver.entity';
+import { CarEntity } from '../car/car.entity';
 
 @Entity({ name: 'budgets' })
 export class BudgetEntity {
