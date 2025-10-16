@@ -4,11 +4,14 @@ import { AuthModule } from '../auth/auth.module';
 import { DriverEntity } from './driver.entity';
 import { DriverController } from './driver.controller';
 import { DriverService } from './driver.service';
+import { BudgetModule } from 'src/budget/budget.module';
+import { BudgetEntity } from 'src/budget/budget.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([DriverEntity]),
+    TypeOrmModule.forFeature([DriverEntity, BudgetEntity]),
     // forwardRef(() => AuthModule),
+    // BudgetModule,
   ],
   controllers: [DriverController],
   providers: [DriverService],

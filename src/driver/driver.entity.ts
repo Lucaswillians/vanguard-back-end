@@ -34,6 +34,6 @@ export class DriverEntity {
   @DeleteDateColumn({ name: 'deleted_at' })
   deletedAt: string;
 
-  @OneToMany(() => BudgetEntity, (budget) => budget.car)
+  @OneToMany(() => BudgetEntity, (budget) => budget.driver)
   budgets: BudgetEntity[];
 }

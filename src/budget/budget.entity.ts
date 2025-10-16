@@ -67,9 +67,15 @@ export class BudgetEntity {
   @JoinColumn({ name: 'cliente_id' })
   cliente: ClientEntity;
 
-  @ManyToOne(() => DriverEntity, (driver) => driver.budgets)
+  @ManyToOne(() => DriverEntity, (driver) => driver.budgets, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'driver_id' })
   driver: DriverEntity;
+
+  @Column({ name: 'driver_id' })
+  driver_id: string;
+
 
   @ManyToOne(() => CarEntity, (car) => car.budgets)
   @JoinColumn({ name: 'car_id' })
