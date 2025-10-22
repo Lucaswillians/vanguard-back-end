@@ -1,7 +1,9 @@
+import { UserEntity } from "src/User/user.entity";
 import { BudgetEntity } from "../budget/budget.entity";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, OneToMany } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, OneToMany, ManyToOne, Unique } from "typeorm";
 
 @Entity({ name: 'client' })
+@Unique(['user', 'email'])
 export class ClientEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -26,4 +28,7 @@ export class ClientEntity {
 
   @OneToMany(() => BudgetEntity, (budget) => budget.car)
   budgets: BudgetEntity[];
+
+  @ManyToOne(() => UserEntity, (user) => user.car)
+  user: UserEntity;
 }

@@ -1,45 +1,54 @@
-import { Body, Controller, Delete, Get, Inject, Param, Post, Put } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Inject, Param, Post, Put, Req, UseGuards } from "@nestjs/common";
 import { CarService } from "./car.service";
 import { CreateCarDto } from "./dto/CreateCar.dto";
 import { GetCarDto } from "./dto/GetCar.dto";
 import { UpdateCarDto } from "./dto/UpdateCar.dto";
+import { AuthGuard } from "src/auth/auth.guard";
 
+@UseGuards(AuthGuard)
 @Controller('/car')
 export class CarController {
   @Inject()
   private carService: CarService;
 
+  private formatResponse(car: any, message: string) {
+    return { car, message };
+  }
+
   @Post()
-  async postCar(@Body() carData: CreateCarDto) {
-    const carCreated = await this.carService.createCar(carData)
+  async postCar(
+    @Body() dto: CreateCarDto,
+    @Req() req: Request,
+  ): Promise<{ car: GetCarDto; message: string }> {
+    const userId = req['user'].sub;
+    const car = await this.carService.createCar(dto, userId);
+    return this.formatResponse(car, 'Driver created with success!');
+  }
 
-    return {
-      user: new GetCarDto(carCreated.id, carCreated.model, carCreated.plate, carCreated.consumption, carCreated.fixed_cost),
-      message: 'Car created with success!'
-    };
-  };
-
-  // @UseGuards(AuthGuard)
   @Get()
-  async getCar() {
-    return await this.carService.getCar();
+  async getCar(@Req() req: Request): Promise<GetCarDto[]> {
+    const userId = req['user'].sub;
+    return this.carService.getCar(userId);
   }
 
-  // @UseGuards(AuthGuard)
-  // @Get('/:id')
-  // async findOne(@Param('id') id: string) {
-  //   return await this.userService.getOne(id)
-  // }
-
-  // @UseGuards(AuthGuard)
   @Put('/:id')
-  async updateCar(@Param('id') id: string, @Body() newData: UpdateCarDto) {
-    return { user: await this.carService.updateCar(id, newData), message: 'Car updated with success!' };
+  async updateCar(
+    @Param('id') id: string,
+    @Body() dto: UpdateCarDto,
+    @Req() req: Request,
+  ): Promise<{ car: GetCarDto; message: string }> {
+    const userId = req['user'].sub;
+    const car = await this.carService.updateCar(id, dto, userId);
+    return this.formatResponse(car, 'Driver updated with success!');
   }
 
-  // @UseGuards(AuthGuard)
   @Delete('/:id')
-  async deleteCar(@Param('id') id: string) {
-    return { user: await this.carService.deleteCar(id), message: 'Car deleted with success!' };
+  async deleteDriver(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<{ car: GetCarDto; message: string }> {
+    const userId = req['user'].sub;
+    const car = await this.carService.deleteCar(id, userId);
+    return this.formatResponse(car, 'Driver deleted with success!');
   }
 }

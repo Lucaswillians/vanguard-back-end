@@ -4,11 +4,12 @@ import { AuthModule } from '../auth/auth.module';
 import { ClientEntity } from './client.entity';
 import { ClientController } from './client.controller';
 import { ClientService } from './client.service';
+import { UserEntity } from 'src/User/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ClientEntity]),
-    // forwardRef(() => AuthModule),
+    TypeOrmModule.forFeature([ClientEntity, UserEntity]),
+    forwardRef(() => AuthModule),
   ],
   controllers: [ClientController],
   providers: [ClientService],

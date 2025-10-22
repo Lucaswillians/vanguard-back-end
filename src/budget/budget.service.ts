@@ -46,7 +46,7 @@ export class BudgetService {
     return { distance, duracao };
   }
 
-  async createBudget(dto: CreateBudgetDto) {
+  async createBudget(dto: CreateBudgetDto, userId: string) {
     const {
       origem,
       destino,
@@ -69,8 +69,8 @@ export class BudgetService {
 
     const { distance } = await this.calculateDistance(origem, destino);
     const totalDistance = distance * 2;
-    const { consumption, fixed_cost } = await this.carApiService.findById(car_id);
-    const { driverCost, dailyPriceDriver, email: driverEmail, name: driverName } = await this.driverApiService.findById(driver_id);
+    const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
+    const { driverCost, dailyPriceDriver, email: driverEmail, name: driverName } = await this.driverApiService.findById(driver_id, userId);
     const dieselPrice = await this.gasApiService.getDieselSC();
 
     const litersConsumed = totalDistance / consumption;
@@ -78,7 +78,7 @@ export class BudgetService {
     const custoMotoristaMensal = (driverCost / 15) * numMotoristas;
     const custoDiaria = dailyPriceDriver * diasFora;
 
-    const subtotal = gasCost + custoMotoristaMensal + custoDiaria + pedagio + fixed_cost + lucroDesejado + custoExtra;
+    const subtotal = gasCost + custoMotoristaMensal + custoDiaria + pedagio + fixed_cost! + lucroDesejado + custoExtra;
     const imposto = subtotal * (impostoPercent / 100);
     const valorTotal = subtotal + imposto;
     const percentualCombustivel = (gasCost / valorTotal) * 100;
@@ -168,7 +168,7 @@ export class BudgetService {
     return budgetList;
   }
 
-  async updateBudget(id: string, dto: UpdateBudgetDto) {
+  async updateBudget(id: string, dto: UpdateBudgetDto, userId: string) {
     const budget = await this.budgetRepository.findOne({
       where: { id },
       relations: ['cliente', 'driver', 'car'],
@@ -208,9 +208,8 @@ export class BudgetService {
     const { distance } = await this.calculateDistance(origem, destino);
     const totalDistance = distance * 2;
 
-    const { consumption, fixed_cost } = await this.carApiService.findById(car_id);
-    const { driverCost, dailyPriceDriver, email: driverEmail, name: driverName } =
-      await this.driverApiService.findById(driver_id);
+    const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
+    const { driverCost, dailyPriceDriver, email: driverEmail, name: driverName } = await this.driverApiService.findById(driver_id, userId);
     const dieselPrice = await this.gasApiService.getDieselSC();
 
     const litersConsumed = totalDistance / consumption;
@@ -223,7 +222,7 @@ export class BudgetService {
       custoMotoristaMensal +
       custoDiaria +
       pedagio +
-      fixed_cost +
+      fixed_cost! +
       lucroDesejado +
       custoExtra;
     const imposto = subtotal * (impostoPercent / 100);
@@ -328,7 +327,7 @@ export class BudgetService {
     const mediaKmPorLitro = 2.5;            // média de consumo do ônibus
 
     // isso vem da api de diesel 
-    const precoDiesel = 6.11;               // valor atual do diesel (R$)
+    const precoDiesel = 6.13;               // valor atual do diesel (R$)
 
     // isso vem de driver 
     const salarioMotorista = 5500;          // salário mensal (R$)

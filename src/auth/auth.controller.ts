@@ -3,6 +3,7 @@ import { AuthService } from "./auth.service";
 import { RateLimiterService } from "./rate-limiter/rateLimiter.service";
 import { CreateUserDto } from "../User/dto/CreateUser.dto";
 import { Request, Response } from "express";
+import { access } from "fs";
 
 @Controller('/auth')
 export class AuthController {
@@ -32,7 +33,7 @@ export class AuthController {
       maxAge: 1000 * 60 * 60 * 24, 
     });
 
-    return { message: 'Login realizado com sucesso!' }; 
+    return { message: 'Login realizado com sucesso!', accessToken: token.access_token }; 
   }
 
   @Post('logout')

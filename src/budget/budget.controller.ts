@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Inject, Put, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Inject, Put, Param, Req } from '@nestjs/common';
 import { BudgetService } from './budget.service';
 import { CreateBudgetDto } from './dto/CreateBudget.dto';
 import { BudgetEntity } from './budget.entity';
@@ -16,14 +16,19 @@ export class BudgetController {
   }
 
   @Post()
-  async create(@Body() dto: CreateBudgetDto): Promise<BudgetEntity> {
-    const budget = await this.budgetService.createBudget(dto);
-    return budget;
+  async create(@Body() dto: CreateBudgetDto, @Req() req: any): Promise<BudgetEntity> {
+    const userId = req.user?.sub; 
+    return this.budgetService.createBudget(dto, userId);
   }
 
   @Get()
   async getAllBudgets() {
     return await this.budgetService.getAllBudgets();
+  }
+
+  @Get('mock')
+  async getMock() {
+    return await this.budgetService.createBudgetMock()
   }
 
   @Get('trips')
@@ -35,8 +40,12 @@ export class BudgetController {
   async updateBudget(
     @Param('id') id: string,
     @Body() updateBudgetDto: UpdateBudgetDto,
+    @Req() req: Request,
   ) {
-    const updatedBudget = await this.budgetService.updateBudget(id, updateBudgetDto);
+    const userId = req['user'].sub; 
+
+    const updatedBudget = await this.budgetService.updateBudget(id, updateBudgetDto, userId);
+
     return {
       message: 'Budget updated successfully!',
       data: updatedBudget,

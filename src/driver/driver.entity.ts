@@ -1,8 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, OneToMany, ManyToOne, Unique } from 'typeorm';
 import { PaymentType } from '../enums/PaymentType';
 import { BudgetEntity } from '../budget/budget.entity';
+import { UserEntity } from 'src/User/user.entity';
 
 @Entity('drivers')
+@Unique(['user', 'cpf'])
 export class DriverEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -10,10 +12,10 @@ export class DriverEntity {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ type: 'varchar', unique: true })
+  @Column({ type: 'varchar' })
   email: string;
 
-  @Column({ type: 'varchar', unique: true, length: 14 }) 
+  @Column({ type: 'varchar', length: 14 }) 
   cpf: string;
 
   @Column({ type: 'enum', enum: PaymentType })
@@ -36,4 +38,7 @@ export class DriverEntity {
 
   @OneToMany(() => BudgetEntity, (budget) => budget.driver)
   budgets: BudgetEntity[];
+
+  @ManyToOne(() => UserEntity, (user) => user.driver)
+  user: UserEntity;
 }

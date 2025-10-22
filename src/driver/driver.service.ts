@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
 import { DriverEntity } from './driver.entity';
 import { CreateDriverDto } from './dto/CreateDriver.dto';
 import { UpdateDriverDto } from './dto/UpdateDriver.dto';
 import { BudgetEntity } from '../budget/budget.entity';
+import { UserEntity } from 'src/User/user.entity';
 
 @Injectable()
 export class DriverService {
@@ -16,43 +17,66 @@ export class DriverService {
     private readonly budgetRepository: Repository<BudgetEntity>,
   ) { }
 
- async createDriver(data: CreateDriverDto) {
-  const driver = this.driverRepository.create(data);
-  return this.driverRepository.save(driver);
-}
+  async createDriver(data: CreateDriverDto, userId: string) {
+    const driver = this.driverRepository.create({
+      ...data,
+      user: { id: userId } as UserEntity, 
+    });
 
-  async getDrivers() {
-    return this.driverRepository.find();
+    return await this.driverRepository.save(driver);
   }
 
-  async findById(id: string): Promise<DriverEntity> {
-    const driver = await this.driverRepository.findOne({ where: { id } });
-    if (!driver) throw new Error('Driver not found');
+  async getDrivers(userId: string) {
+    return this.driverRepository.find({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
+  }
+
+  async findById(id: string, userId: string): Promise<DriverEntity> {
+    const driver = await this.driverRepository.findOne({
+      where: { id, user: { id: userId } },
+      relations: ['user'],
+    });
+
+    if (!driver) throw new NotFoundException('Motorista não encontrado');
     return driver;
   }
 
-  async updateDriver(id: string, newData: UpdateDriverDto) {
-    return this.driverRepository.update(id, newData);
+  async updateDriver(id: string, newData: UpdateDriverDto, userId: string) {
+    const driver = await this.findById(id, userId);
+    if (!driver) throw new ForbiddenException('Acesso negado a este motorista');
+
+    await this.driverRepository.update(id, newData);
+    return this.findById(id, userId);
   }
 
-  async deleteDriver(id: string) {
+  async deleteDriver(id: string, userId: string) {
+    const driver = await this.findById(id, userId);
+    if (!driver) throw new ForbiddenException('Acesso negado a este motorista');
+
     return this.driverRepository.delete(id);
   }
 
-  async getDriverMonthlyRemuneration(driverId: string, month: number, year: number) {
-    const driver = await this.driverRepository.findOne({ where: { id: driverId } });
-    if (!driver) throw new Error('Motorista não encontrado');
+  async getDriverMonthlyRemuneration(driverId: string, month: number, year: number, userId: string) {
+    const driver = await this.driverRepository.findOne({
+      where: { id: driverId, user: { id: userId } },
+      relations: ['user'],
+    });
+
+    if (!driver) throw new NotFoundException('Motorista não encontrado');
 
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
 
     const budgets = await this.budgetRepository.find({
       where: {
-        driver_id: driverId,
+        driver: { id: driverId },
+        user: { id: userId },
         date_hour_trip: Between(startDate, endDate),
       },
+      relations: ['driver', 'user'],
     });
-
 
     if (budgets.length === 0) {
       return {
@@ -76,7 +100,7 @@ export class DriverService {
       totalDays,
       dailyRate: driver.dailyPriceDriver,
       totalRemuneration,
-      trips: budgets.map(b => ({
+      trips: budgets.map((b) => ({
         origin: b.origin,
         destiny: b.destiny,
         days_out: b.days_out,

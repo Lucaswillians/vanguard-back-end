@@ -1,7 +1,9 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, OneToMany } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, OneToMany, ManyToOne, Unique } from "typeorm";
 import { BudgetEntity } from "../budget/budget.entity";
+import { UserEntity } from "src/User/user.entity";
 
 @Entity({ name: 'car' })
+@Unique(['user', 'plate'])
 export class CarEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -15,8 +17,8 @@ export class CarEntity {
   @Column({ type: 'float' })
   consumption: number;
 
-  @Column({ type: 'float' })
-  fixed_cost: number;
+  @Column({ type: 'float', default: 0 })
+  fixed_cost?: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: string;
@@ -29,4 +31,7 @@ export class CarEntity {
 
   @OneToMany(() => BudgetEntity, (budget) => budget.car)
   budgets: BudgetEntity[];
+
+  @ManyToOne(() => UserEntity, (user) => user.car)
+  user: UserEntity;
 }

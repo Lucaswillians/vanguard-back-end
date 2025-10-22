@@ -3,6 +3,7 @@ import { BudgetStatus } from '../enums/BudgetStatus';
 import { ClientEntity } from '../client/client.entity';
 import { DriverEntity } from '../driver/driver.entity';
 import { CarEntity } from '../car/car.entity';
+import { UserEntity } from 'src/User/user.entity';
 
 @Entity({ name: 'budgets' })
 export class BudgetEntity {
@@ -37,7 +38,7 @@ export class BudgetEntity {
   toll?: number;
 
   @Column({ type: 'float', nullable: false })
-  fixed_cost: number;
+  fixed_cost?: number;
 
   @Column({ type: 'float' })
   extra_cost: number;
@@ -80,4 +81,7 @@ export class BudgetEntity {
   @ManyToOne(() => CarEntity, (car) => car.budgets)
   @JoinColumn({ name: 'car_id' })
   car: CarEntity;
+
+  @ManyToOne(() => UserEntity, (user) => user.budget, { onDelete: 'CASCADE' })
+  user: UserEntity; 
 }
