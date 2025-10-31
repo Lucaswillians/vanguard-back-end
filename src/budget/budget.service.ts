@@ -117,21 +117,6 @@ export class BudgetService {
     const dataVoltaFormatada = dataVolta.toLocaleDateString('pt-BR');
     const horaVoltaFormatada = dataVolta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-    const emailSubject = 'Nova viagem atribuída';
-    const emailText = `
-    Olá ${driverName},
-
-    Você foi designado para uma nova viagem.
-
-    Origem: ${origem}
-    Destino: ${destino}
-    Data e hora de ida: ${dataIdaFormatada} às ${horaIdaFormatada}
-    Data e hora de retorno: ${dataVoltaFormatada} às ${horaVoltaFormatada}
-    Número de dias fora: ${diasFora}
-  `;
-
-    await this.emailSender.sendEmail(driverEmail, emailSubject, emailText);
-
     return {
       ...savedBudget,
       data_ida: dataIdaFormatada,
@@ -342,17 +327,45 @@ export class BudgetService {
   async updateBudgetStatus(id: string, dto: UpdateBudgetStatusDto, userId: string) {
     const budget = await this.budgetRepository.findOne({
       where: { id, user: { id: userId } },
-      relations: ['user'],
+      relations: ['user', 'driver', 'car', 'cliente'],
     });
 
     if (!budget) {
       throw new NotFoundException('Orçamento não encontrado ou não pertence a este usuário');
     }
 
-
     budget.status = dto.status;
-    return this.budgetRepository.save(budget);
+    const updatedBudget = await this.budgetRepository.save(budget);
+
+    if (dto.status === BudgetStatus.APPROVED) {
+      const driver = await this.driverApiService.findById(budget.driver.id, userId);
+
+      const dataIdaFormatada = budget.date_hour_trip.toLocaleDateString('pt-BR');
+      const horaIdaFormatada = budget.date_hour_trip.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const dataVoltaFormatada = budget.date_hour_return_trip.toLocaleDateString('pt-BR');
+      const horaVoltaFormatada = budget.date_hour_return_trip.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      const emailSubject = 'Nova Viagem Confirmada 🚚';
+      const emailText = `
+      Olá ${driver.name},
+
+      Você tem uma nova viagem! Aqui estão os detalhes:
+
+      Origem: ${budget.origin}
+      Destino: ${budget.destiny}
+      Data e hora de ida: ${dataIdaFormatada} às ${horaIdaFormatada}
+      Data e hora de retorno: ${dataVoltaFormatada} às ${horaVoltaFormatada}
+      Número de dias fora: ${budget.days_out}
+
+      Boa viagem e dirija com segurança!
+    `;
+
+      await this.emailSender.sendEmail(driver.email, emailSubject, emailText);
+    }
+
+    return updatedBudget;
   }
+
 
   async createBudgetMock() {
     // ==== MOCKS (valores simulados) ====
