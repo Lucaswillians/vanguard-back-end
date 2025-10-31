@@ -1,4 +1,4 @@
-import { UserEntity } from "src/User/user.entity";
+import { UserEntity } from "../User/user.entity";
 import { BudgetEntity } from "../budget/budget.entity";
 import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, OneToMany, ManyToOne, Unique } from "typeorm";
 

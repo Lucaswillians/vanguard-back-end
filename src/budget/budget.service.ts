@@ -13,6 +13,7 @@ import { BudgetStatus } from '../enums/BudgetStatus';
 import { GetBudgetDto } from './dto/GetBudget.dto';
 import { UpdateBudgetDto } from './dto/UpdateBudget.dto';
 import { GetTripDetails } from './dto/GetTripDetails.dto';
+import { UpdateBudgetStatusDto } from './dto/UpdateBudgetStatus.dto';
 
 @Injectable()
 export class BudgetService {
@@ -65,12 +66,14 @@ export class BudgetService {
     const dataIda = new Date(data_hora_viagem);
     const dataVolta = new Date(data_hora_viagem_retorno);
     const diffTime = Math.abs(dataVolta.getTime() - dataIda.getTime());
-    const diasFora = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+    const diasFora = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     const { distance } = await this.calculateDistance(origem, destino);
     const totalDistance = distance * 2;
+
     const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
-    const { driverCost, dailyPriceDriver, email: driverEmail, name: driverName } = await this.driverApiService.findById(driver_id, userId);
+    const { driverCost, dailyPriceDriver, email: driverEmail, name: driverName } =
+      await this.driverApiService.findById(driver_id, userId);
     const dieselPrice = await this.gasApiService.getDieselSC();
 
     const litersConsumed = totalDistance / consumption;
@@ -78,7 +81,9 @@ export class BudgetService {
     const custoMotoristaMensal = (driverCost / 15) * numMotoristas;
     const custoDiaria = dailyPriceDriver * diasFora;
 
-    const subtotal = gasCost + custoMotoristaMensal + custoDiaria + pedagio + fixed_cost! + lucroDesejado + custoExtra;
+    const subtotal =
+      gasCost + custoMotoristaMensal + custoDiaria + pedagio + fixed_cost! + lucroDesejado + custoExtra;
+
     const imposto = subtotal * (impostoPercent / 100);
     const valorTotal = subtotal + imposto;
     const percentualCombustivel = (gasCost / valorTotal) * 100;
@@ -94,7 +99,7 @@ export class BudgetService {
       desired_profit: lucroDesejado,
       days_out: diasFora,
       toll: pedagio,
-      fixed_cost: fixed_cost,
+      fixed_cost,
       extra_cost: custoExtra,
       number_of_drivers: numMotoristas,
       houveLucro,
@@ -102,6 +107,7 @@ export class BudgetService {
       cliente: { id: cliente_id },
       driver: { id: driver_id },
       car: { id: car_id },
+      user: { id: userId }, 
     });
 
     const savedBudget = await this.budgetRepository.save(budget);
@@ -113,16 +119,16 @@ export class BudgetService {
 
     const emailSubject = 'Nova viagem atribuída';
     const emailText = `
-      Olá ${driverName},
+    Olá ${driverName},
 
-      Você foi designado para uma nova viagem.
+    Você foi designado para uma nova viagem.
 
-      Origem: ${origem}
-      Destino: ${destino}
-      Data e hora de ida: ${dataIdaFormatada} às ${horaIdaFormatada}
-      Data e hora de retorno: ${dataVoltaFormatada} às ${horaVoltaFormatada}
-      Número de dias fora: ${diasFora}
-      `;
+    Origem: ${origem}
+    Destino: ${destino}
+    Data e hora de ida: ${dataIdaFormatada} às ${horaIdaFormatada}
+    Data e hora de retorno: ${dataVoltaFormatada} às ${horaVoltaFormatada}
+    Número de dias fora: ${diasFora}
+  `;
 
     await this.emailSender.sendEmail(driverEmail, emailSubject, emailText);
 
@@ -145,37 +151,69 @@ export class BudgetService {
     };
   }
 
-  async getAllBudgets() {
-    const savedBudget = await this.budgetRepository.find({ relations: ['cliente', 'driver', 'car'] });
-    const budgetList = savedBudget.map((budget) => new GetBudgetDto(
-      budget.id, budget.origin, budget.destiny,
-      budget.date_hour_trip, budget.date_hour_return_trip, 
-      budget.cliente.name, budget.driver.name, budget.car.model, budget.total_distance,
-      budget.trip_price, budget.desired_profit, budget.status,
-    ));
+  async getAllBudgets(userId: string) {
+    const savedBudget = await this.budgetRepository.find({
+      where: { user: { id: userId } },
+      relations: ['cliente', 'driver', 'car'],
+      order: { createdAt: 'DESC' }
+    });
+
+    const budgetList = savedBudget.map(
+      (budget) =>
+        new GetBudgetDto(
+          budget.id,
+          budget.origin,
+          budget.destiny,
+          budget.date_hour_trip,
+          budget.date_hour_return_trip,
+          budget.cliente?.name,
+          budget.driver?.name,
+          budget.car?.model,
+          budget.total_distance,
+          budget.trip_price,
+          budget.desired_profit,
+          budget.status,
+        ),
+    );
 
     return budgetList;
   }
 
-  async getAllTrips() {
-    const savedBudget = await this.budgetRepository.find({ relations: ['cliente', 'driver', 'car'] });
-    const budgetList = savedBudget.map((budget) => new GetTripDetails(
-      budget.id, budget.origin, budget.destiny,
-      budget.date_hour_trip, budget.date_hour_return_trip,
-      budget.cliente.name, budget.driver.name, budget.car.model, budget.total_distance,
-    ));
+
+  async getAllTrips(userId: string) {
+    const savedBudget = await this.budgetRepository.find({
+      where: { user: { id: userId }, status: BudgetStatus.APPROVED }, 
+      relations: ['cliente', 'driver', 'car'],
+      order: { updatedAt: 'DESC' }
+    });
+
+    const budgetList = savedBudget.map(
+      (budget) =>
+        new GetTripDetails(
+          budget.id,
+          budget.origin,
+          budget.destiny,
+          budget.date_hour_trip,
+          budget.date_hour_return_trip,
+          budget.cliente?.name,
+          budget.driver?.name,
+          budget.car?.model,
+          budget.total_distance,
+        ),
+    );
 
     return budgetList;
   }
+
 
   async updateBudget(id: string, dto: UpdateBudgetDto, userId: string) {
     const budget = await this.budgetRepository.findOne({
-      where: { id },
-      relations: ['cliente', 'driver', 'car'],
+      where: { id, user: { id: userId } },
+      relations: ['cliente', 'driver', 'car', 'user'],
     });
 
     if (!budget) {
-      throw new NotFoundException('Orçamento não encontrado');
+      throw new NotFoundException('Orçamento não encontrado ou não pertence a este usuário');
     }
 
     // === Captura dos valores anteriores (para comparação) ===
@@ -217,14 +255,7 @@ export class BudgetService {
     const custoMotoristaMensal = (driverCost / 15) * numMotoristas;
     const custoDiaria = dailyPriceDriver * diasFora;
 
-    const subtotal =
-      gasCost +
-      custoMotoristaMensal +
-      custoDiaria +
-      pedagio +
-      fixed_cost! +
-      lucroDesejado +
-      custoExtra;
+    const subtotal = gasCost + custoMotoristaMensal + custoDiaria + pedagio + fixed_cost! + lucroDesejado + custoExtra;
     const imposto = subtotal * (impostoPercent / 100);
     const valorTotal = subtotal + imposto;
     const percentualCombustivel = (gasCost / valorTotal) * 100;
@@ -248,6 +279,7 @@ export class BudgetService {
     budget.car = { id: car_id } as any;
     budget.driver = { id: driver_id } as any;
     budget.cliente = { id: cliente_id } as any;
+    budget.user = { id: userId } as any; 
 
     const updatedBudget = await this.budgetRepository.save(budget);
 
@@ -260,45 +292,33 @@ export class BudgetService {
 
     if (origemAlterada || destinoAlterado || dataAlterada) {
       const dataIdaFormatada = dataIda.toLocaleDateString('pt-BR');
-      const horaIdaFormatada = dataIda.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+      const horaIdaFormatada = dataIda.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const dataVoltaFormatada = dataVolta.toLocaleDateString('pt-BR');
-      const horaVoltaFormatada = dataVolta.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+      const horaVoltaFormatada = dataVolta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
       const emailSubject = 'Atualização na sua viagem';
       const emailText = `
-      Olá ${driverName},
+    Olá ${driverName},
 
-      Houve uma atualização nos detalhes da sua viagem.
+    Houve uma atualização nos detalhes da sua viagem.
 
-      Origem: ${origem}
-      Destino: ${destino}
-      Data e hora de ida: ${dataIdaFormatada} às ${horaIdaFormatada}
-      Data e hora de retorno: ${dataVoltaFormatada} às ${horaVoltaFormatada}
-      Número de dias fora: ${diasFora}
+    Origem: ${origem}
+    Destino: ${destino}
+    Data e hora de ida: ${dataIdaFormatada} às ${horaIdaFormatada}
+    Data e hora de retorno: ${dataVoltaFormatada} às ${horaVoltaFormatada}
+    Número de dias fora: ${diasFora}
 
-      Por favor, verifique os novos detalhes.
+    Por favor, verifique os novos detalhes.
     `;
 
       await this.emailSender.sendEmail(driverEmail, emailSubject, emailText);
     }
 
-    // === Retorno ===
+    // === Retorno formatado ===
     const dataIdaFormatada = dataIda.toLocaleDateString('pt-BR');
-    const horaIdaFormatada = dataIda.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const horaIdaFormatada = dataIda.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const dataVoltaFormatada = dataVolta.toLocaleDateString('pt-BR');
-    const horaVoltaFormatada = dataVolta.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const horaVoltaFormatada = dataVolta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
     return {
       ...updatedBudget,
@@ -317,6 +337,21 @@ export class BudgetService {
       houveLucro,
       dieselPrice: dieselPrice.preco,
     };
+  }
+
+  async updateBudgetStatus(id: string, dto: UpdateBudgetStatusDto, userId: string) {
+    const budget = await this.budgetRepository.findOne({
+      where: { id, user: { id: userId } },
+      relations: ['user'],
+    });
+
+    if (!budget) {
+      throw new NotFoundException('Orçamento não encontrado ou não pertence a este usuário');
+    }
+
+
+    budget.status = dto.status;
+    return this.budgetRepository.save(budget);
   }
 
   async createBudgetMock() {

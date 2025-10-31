@@ -53,6 +53,8 @@ describe('BudgetService', () => {
   const mockEmailSender = { sendEmail: jest.fn() };
   const mockHttpService = { axiosRef: { get: jest.fn() } };
 
+  const mockUserId = 'user-123'; // ID fictício do usuário para os testes
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -72,7 +74,6 @@ describe('BudgetService', () => {
   });
 
   it('should create a budget', async () => {
-    // mocks das dependências
     mockGeocodeApiService.getCoordinates.mockResolvedValue({ lat: -23, lng: -46 });
     mockHttpService.axiosRef.get.mockResolvedValue({ data: { routes: [{ distance: 500, duration: 3600 }] } });
     mockCarService.findById.mockResolvedValue({ consumption: 10, fixed_cost: 300 });
@@ -98,7 +99,7 @@ describe('BudgetService', () => {
       car_id: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
     };
 
-    const result = await service.createBudget(dto);
+    const result = await service.createBudget(dto, mockUserId);
 
     expect(result).toHaveProperty('origin', 'São Paulo');
     expect(result).toHaveProperty('valorTotal');
@@ -109,7 +110,7 @@ describe('BudgetService', () => {
   it('should get all budgets', async () => {
     mockRepo.find.mockResolvedValue([mockBudget]);
 
-    const result = await service.getAllBudgets();
+    const result = await service.getAllBudgets(mockUserId);
 
     expect(result).toHaveLength(1);
     expect(result[0]).toHaveProperty('id', '1');
@@ -126,7 +127,7 @@ describe('BudgetService', () => {
 
     const updateDto = { origem: 'São Paulo Updated' };
 
-    const result = await service.updateBudget('1', updateDto);
+    const result = await service.updateBudget('1', updateDto, mockUserId);
 
     expect(result).toHaveProperty('origin', 'São Paulo Updated');
     expect(mockRepo.save).toHaveBeenCalled();
@@ -136,7 +137,7 @@ describe('BudgetService', () => {
   it('should throw if budget not found', async () => {
     mockRepo.findOne.mockResolvedValue(undefined);
 
-    await expect(service.updateBudget('999', {})).rejects.toThrow('Orçamento não encontrado');
+    await expect(service.updateBudget('999', {}, mockUserId)).rejects.toThrow('Orçamento não encontrado');
   });
 
   it('should return mock budget calculation', async () => {

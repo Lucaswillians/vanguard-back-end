@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, OneToMany, ManyToOne, Unique } from "typeorm";
 import { BudgetEntity } from "../budget/budget.entity";
-import { UserEntity } from "src/User/user.entity";
+import { UserEntity } from "../User/user.entity";
 
 @Entity({ name: 'car' })
 @Unique(['user', 'plate'])

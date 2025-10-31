@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BudgetController } from './budget.controller';
 import { BudgetService } from './budget.service';
@@ -13,17 +13,20 @@ import { CarEntity } from '../car/car.entity';
 import { DriverModule } from '../driver/driver.module';
 import { ClientModule } from '../client/client.module';
 import { CarModule } from '../car/car.module';
+import { UserEntity } from '..//User/user.entity';
+import { AuthModule } from '..//auth/auth.module';
 
 @Module({
   imports: [
     HttpModule,
-    TypeOrmModule.forFeature([BudgetEntity, ClientEntity, DriverEntity, CarEntity]),
+    TypeOrmModule.forFeature([BudgetEntity, ClientEntity, DriverEntity, CarEntity, UserEntity]),
     GeocodeApiModule,
     GasApiModule,
     EmailSenderModule,
     DriverModule,
     ClientModule,
     CarModule,
+    forwardRef(() => AuthModule),
   ],
   controllers: [BudgetController],
   providers: [BudgetService],

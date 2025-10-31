@@ -1,7 +1,7 @@
-import { BudgetEntity } from "src/budget/budget.entity";
-import { CarEntity } from "src/car/car.entity";
-import { ClientEntity } from "src/client/client.entity";
-import { DriverEntity } from "src/driver/driver.entity";
+import { BudgetEntity } from "../budget/budget.entity";
+import { CarEntity } from "../car/car.entity";
+import { ClientEntity } from "../client/client.entity";
+import { DriverEntity } from "../driver/driver.entity";
 import { Column, CreateDateColumn, DeleteDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, OneToMany } from "typeorm";
 
 @Entity({ name: 'user' })

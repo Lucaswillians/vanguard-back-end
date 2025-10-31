@@ -4,7 +4,7 @@ import { AuthModule } from '../auth/auth.module';
 import { ClientEntity } from './client.entity';
 import { ClientController } from './client.controller';
 import { ClientService } from './client.service';
-import { UserEntity } from 'src/User/user.entity';
+import { UserEntity } from '../User/user.entity';
 
 @Module({
   imports: [

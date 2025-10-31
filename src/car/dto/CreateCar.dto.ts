@@ -5,7 +5,6 @@ export class CreateCarDto {
   @IsNotEmpty()
   readonly model: string;
 
-  @IsEmail()
   @IsNotEmpty()
   readonly plate: string;
 

@@ -4,8 +4,8 @@ import { AuthModule } from '../auth/auth.module';
 import { CarEntity } from './car.entity';
 import { CarController } from './car.controller';
 import { CarService } from './car.service';
-import { BudgetEntity } from 'src/budget/budget.entity';
-import { UserEntity } from 'src/User/user.entity';
+import { BudgetEntity } from '../budget/budget.entity';
+import { UserEntity } from '../User/user.entity';
 
 @Module({
   imports: [

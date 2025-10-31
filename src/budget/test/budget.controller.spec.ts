@@ -4,6 +4,7 @@ import { BudgetService } from '../budget.service';
 import { CreateBudgetDto } from '../dto/CreateBudget.dto';
 import { UpdateBudgetDto } from '../dto/UpdateBudget.dto';
 import { BudgetStatus } from '../../enums/BudgetStatus';
+import { AuthGuard } from '@nestjs/passport'; // garante que é o mesmo que o controller usa
 
 describe('BudgetController', () => {
   let controller: BudgetController;
@@ -17,11 +18,17 @@ describe('BudgetController', () => {
     createBudgetMock: jest.fn(),
   };
 
+  const mockReq = { user: { id: 'user-123' } };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [BudgetController],
       providers: [{ provide: BudgetService, useValue: mockService }],
-    }).compile();
+    })
+      // aqui garantimos que o guard é ignorado
+      .overrideGuard(AuthGuard('jwt'))
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<BudgetController>(BudgetController);
     service = module.get<BudgetService>(BudgetService);
@@ -48,26 +55,28 @@ describe('BudgetController', () => {
     const mockBudget = { id: '1', ...dto };
     mockService.createBudget.mockResolvedValue(mockBudget);
 
-    const result = await controller.create(dto);
+    const result = await controller.create(dto, mockReq);
 
     expect(result).toEqual(mockBudget);
-    expect(mockService.createBudget).toHaveBeenCalledWith(dto);
+    expect(mockService.createBudget).toHaveBeenCalledWith(dto, mockReq.user.id);
   });
 
   it('should get all budgets', async () => {
     const mockBudgets = [{ id: '1' }];
     mockService.getAllBudgets.mockResolvedValue(mockBudgets);
 
-    const result = await controller.getAllBudgets();
+    const result = await controller.getAllBudgets(mockReq);
     expect(result).toEqual(mockBudgets);
+    expect(mockService.getAllBudgets).toHaveBeenCalledWith(mockReq.user.id);
   });
 
   it('should get all trips', async () => {
     const mockTrips = [{ id: '1' }];
     mockService.getAllTrips.mockResolvedValue(mockTrips);
 
-    const result = await controller.getAllTrips();
+    const result = await controller.getAllTrips(mockReq);
     expect(result).toEqual(mockTrips);
+    expect(mockService.getAllTrips).toHaveBeenCalledWith(mockReq.user.id);
   });
 
   it('should update a budget', async () => {
@@ -75,10 +84,10 @@ describe('BudgetController', () => {
     const mockUpdated = { id: '1', origem: 'SP Updated' };
     mockService.updateBudget.mockResolvedValue(mockUpdated);
 
-    const result = await controller.updateBudget('1', updateDto);
+    const result = await controller.updateBudget('1', updateDto, mockReq);
 
     expect(result).toEqual({ message: 'Budget updated successfully!', data: mockUpdated });
-    expect(mockService.updateBudget).toHaveBeenCalledWith('1', updateDto);
+    expect(mockService.updateBudget).toHaveBeenCalledWith('1', updateDto, mockReq.user.id);
   });
 
   it('should return mock budget', async () => {

@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, OneToMany, ManyToOne, Unique } from 'typeorm';
 import { PaymentType } from '../enums/PaymentType';
 import { BudgetEntity } from '../budget/budget.entity';
-import { UserEntity } from 'src/User/user.entity';
+import { UserEntity } from '../User/user.entity';
 
 @Entity('drivers')
 @Unique(['user', 'cpf'])

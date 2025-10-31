@@ -3,7 +3,7 @@ import { BudgetStatus } from '../enums/BudgetStatus';
 import { ClientEntity } from '../client/client.entity';
 import { DriverEntity } from '../driver/driver.entity';
 import { CarEntity } from '../car/car.entity';
-import { UserEntity } from 'src/User/user.entity';
+import { UserEntity } from '../User/user.entity';
 
 @Entity({ name: 'budgets' })
 export class BudgetEntity {

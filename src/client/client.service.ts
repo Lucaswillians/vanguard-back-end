@@ -5,7 +5,7 @@ import { ClientEntity } from "./client.entity";
 import { CreateClientDto } from "./dto/CreateClient.dto";
 import { GetClientDto } from "./dto/GetClient.dto";
 import { UpdateClientDto } from "./dto/UpdateClient.dto";
-import { UserEntity } from "src/User/user.entity";
+import { UserEntity } from "../User/user.entity";
 
 @Injectable()
 export class ClientService {
