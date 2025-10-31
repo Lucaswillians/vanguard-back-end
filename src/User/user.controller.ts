@@ -1,7 +1,7 @@
 import { AuthGuard } from '../auth/auth.guard';
 import { CreateUserDto } from './dto/CreateUser.dto';
 import { UserService } from './user.service';
-import { Body, Controller, Delete, Get, Inject, Param, Post, Put, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Inject, Param, Post, Put, Req, UseGuards } from "@nestjs/common";
 import { UpdateUserDto } from './dto/UpdateUser.dto';
 import { GetUserDto } from './dto/GetUset.dto';
 
@@ -27,9 +27,9 @@ export class UserController {
   }
 
   @UseGuards(AuthGuard)
-  @Get('/:id')
-  async findOne(@Param('id') id: string) {
-    return await this.userService.getOne(id)
+  @Get("me")
+  async getMe(@Req() req: any) {
+    return this.userService.getOneJWTverify(req.user.email);
   }
 
   @UseGuards(AuthGuard)
