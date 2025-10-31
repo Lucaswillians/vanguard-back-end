@@ -17,9 +17,6 @@ export class CreateDriverDto {
   })
   readonly cpf: string;
 
-  @IsEnum(PaymentType)
-  readonly paymentType: PaymentType
-
   @IsNumber()
   readonly driverCost: number;
 

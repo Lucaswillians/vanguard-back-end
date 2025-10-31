@@ -18,9 +18,6 @@ export class DriverEntity {
   @Column({ type: 'varchar', length: 14 }) 
   cpf: string;
 
-  @Column({ type: 'enum', enum: PaymentType })
-  paymentType: PaymentType;
-
   @Column({ type: 'float', nullable: false })
   driverCost: number
 
