@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThanOrEqual, MoreThanOrEqual, Not, Repository } from 'typeorm';
 import { BudgetEntity } from './budget.entity';
@@ -6,7 +6,7 @@ import { GeocodeApiService } from '../geocodeApi/geocodeApi.service';
 import { GasApiService } from '../gasApi/gasApi.service';
 import { CreateBudgetDto } from './dto/CreateBudget.dto';
 import { HttpService } from '@nestjs/axios';
-import { EmailSenderService } from '../email-sender/emailSender.serivce';
+import { EmailSenderService } from '../email-sender/emailSender.service';
 import { CarService } from '../car/car.service';
 import { DriverService } from '../driver/driver.service';
 import { BudgetStatus } from '../enums/BudgetStatus';
@@ -18,6 +18,8 @@ import { calculateBudgetValues } from '../utils/budgetCalculator.util';
 
 @Injectable()
 export class BudgetService {
+  private readonly logger = new Logger(BudgetService.name);
+
   constructor(
     @InjectRepository(BudgetEntity)
     private readonly budgetRepository: Repository<BudgetEntity>,
@@ -30,6 +32,7 @@ export class BudgetService {
   ) { }
 
   async calculateDistance(origem: string, destino: string) {
+    this.logger.log(`Calculando distância entre "${origem}" e "${destino}"`);
     try {
       const origemCoord = await this.geocodeApiService.getCoordinates(origem);
       const destinoCoord = await this.geocodeApiService.getCoordinates(destino);
@@ -39,19 +42,23 @@ export class BudgetService {
       const data = response.data;
 
       if (!data.routes || data.routes.length === 0) {
+        this.logger.warn(`Nenhuma rota encontrada entre "${origem}" e "${destino}"`);
         throw new BadRequestException('Não foi possível calcular a distância entre origem e destino.');
       }
 
       const distance = data.routes[0].distance / 1000; // km
-      const duracao = Math.round(data.routes[0].duration / 60); 
+      const duracao = Math.round(data.routes[0].duration / 60);
+      this.logger.log(`Distância calculada: ${distance} km, duração: ${duracao} min`);
       return { distance, duracao };
     } 
     catch (err) {
+      this.logger.error(`Erro ao calcular distância entre "${origem}" e "${destino}"`, err.stack);
       throw new BadRequestException(`Erro ao calcular distância: ${err.message}`);
     }
   }
 
   async createBudget(dto: CreateBudgetDto, userId: string) {
+    this.logger.log(`Criando orçamento para usuário ${userId}`);
     const {
       origem,
       destino,
@@ -79,6 +86,7 @@ export class BudgetService {
     });
 
     if (conflictingBudget) {
+      this.logger.warn(`Conflito de viagem para motorista ${driver_id} entre ${dataIda} e ${dataVolta}`);
       throw new ConflictException('O motorista selecionado já possui outra viagem nesse período.');
     }
 
@@ -130,6 +138,7 @@ export class BudgetService {
       });
 
       const savedBudget = await this.budgetRepository.save(budget);
+      this.logger.log(`Orçamento criado com sucesso: ID ${savedBudget.id}`);
 
       return {
         ...savedBudget,
@@ -141,19 +150,22 @@ export class BudgetService {
         percentualCombustivel: calc.percentualCombustivel.toFixed(2) + '%',
         dieselPrice: dieselPrice.preco,
       };
-    } catch (err) {
+    } 
+    catch (err) {
+      this.logger.error(`Erro ao criar orçamento para usuário ${userId}`, err.stack);
       throw new BadRequestException(`Erro ao criar orçamento: ${err.message}`);
     }
   }
 
   async getAllBudgets(userId: string) {
+    this.logger.log(`Buscando todos os orçamentos do usuário ${userId}`);
     try {
       const savedBudget = await this.budgetRepository.find({
         where: { user: { id: userId } },
         relations: ['cliente', 'driver', 'car'],
         order: { createdAt: 'DESC' },
       });
-
+      this.logger.log(`Total de orçamentos encontrados: ${savedBudget.length}`);
       return savedBudget.map(
         (budget) =>
           new GetBudgetDto(
@@ -171,20 +183,21 @@ export class BudgetService {
             budget.status,
           ),
       );
-    } 
-    catch (err) {
+    } catch (err) {
+      this.logger.error(`Erro ao buscar orçamentos do usuário ${userId}`, err.stack);
       throw new BadRequestException(`Erro ao buscar orçamentos: ${err.message}`);
     }
   }
 
   async getAllTrips(userId: string) {
+    this.logger.log(`Buscando todas as viagens aprovadas do usuário ${userId}`);
     try {
       const savedBudget = await this.budgetRepository.find({
         where: { user: { id: userId }, status: BudgetStatus.APPROVED },
         relations: ['cliente', 'driver', 'car'],
         order: { updatedAt: 'DESC' },
       });
-
+      this.logger.log(`Total de viagens encontradas: ${savedBudget.length}`);
       return savedBudget.map(
         (budget) =>
           new GetTripDetails(
@@ -201,17 +214,20 @@ export class BudgetService {
       );
     } 
     catch (err) {
+      this.logger.error(`Erro ao buscar viagens do usuário ${userId}`, err.stack);
       throw new BadRequestException(`Erro ao buscar viagens: ${err.message}`);
     }
   }
 
   async updateBudget(id: string, dto: UpdateBudgetDto, userId: string) {
+    this.logger.log(`Atualizando orçamento ID ${id} do usuário ${userId}`);
     const budget = await this.budgetRepository.findOne({
       where: { id, user: { id: userId } },
       relations: ['cliente', 'driver', 'car', 'user'],
     });
 
     if (!budget) {
+      this.logger.warn(`Orçamento ID ${id} não encontrado para usuário ${userId}`);
       throw new NotFoundException('Orçamento não encontrado ou não pertence a este usuário.');
     }
 
@@ -238,7 +254,9 @@ export class BudgetService {
           id: Not(id),
         },
       });
+
       if (conflictingBudget) {
+        this.logger.warn(`Conflito de viagem ao atualizar orçamento ID ${id} para motorista ${driver_id}`);
         throw new ConflictException('O motorista selecionado já possui outra viagem nesse período.');
       }
 
@@ -289,6 +307,7 @@ export class BudgetService {
       });
 
       const updatedBudget = await this.budgetRepository.save(budget);
+      this.logger.log(`Orçamento ID ${id} atualizado com sucesso`);
 
       const dataIdaFormatada = dataIda.toLocaleDateString('pt-BR');
       const horaIdaFormatada = dataIda.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -317,6 +336,7 @@ export class BudgetService {
         `;
 
         await this.emailSender.sendEmail(driverEmail, emailSubject, emailText);
+        this.logger.log(`Email enviado para ${driverEmail} sobre atualização de viagem`);
       }
 
       return {
@@ -329,24 +349,29 @@ export class BudgetService {
         percentualCombustivel: calc.percentualCombustivel.toFixed(2) + '%',
         dieselPrice: dieselPrice.preco,
       };
-    } catch (err) {
+    } 
+    catch (err) {
+      this.logger.error(`Erro ao atualizar orçamento ID ${id}`, err.stack);
       throw new BadRequestException(`Erro ao atualizar orçamento: ${err.message}`);
     }
   }
 
   async updateBudgetStatus(id: string, dto: UpdateBudgetStatusDto, userId: string) {
+    this.logger.log(`Atualizando status do orçamento ID ${id} para "${dto.status}"`);
     const budget = await this.budgetRepository.findOne({
       where: { id, user: { id: userId } },
       relations: ['user', 'driver', 'car', 'cliente'],
     });
 
     if (!budget) {
+      this.logger.warn(`Orçamento ID ${id} não encontrado para atualizar status`);
       throw new NotFoundException('Orçamento não encontrado ou não pertence a este usuário.');
     }
 
     try {
       budget.status = dto.status;
       const updatedBudget = await this.budgetRepository.save(budget);
+      this.logger.log(`Status do orçamento ID ${id} atualizado para "${dto.status}"`);
 
       if (dto.status === BudgetStatus.APPROVED) {
         const driver = await this.driverApiService.findById(budget.driver.id, userId);
@@ -372,87 +397,90 @@ export class BudgetService {
         `;
 
         await this.emailSender.sendEmail(driver.email, emailSubject, emailText);
+        this.logger.log(`Email enviado para ${driver.email} sobre nova viagem`);
       }
 
       return updatedBudget;
-    }
+    } 
     catch (err) {
+      this.logger.error(`Erro ao atualizar status do orçamento ID ${id}`, err.stack);
       throw new BadRequestException(`Erro ao atualizar status do orçamento: ${err.message}`);
     }
   }
 }
 
-  // async createBudgetMock() {
-  //   // ==== MOCKS (valores simulados) ====
-  //   const quilometragemTotal = 885.5652;        // ida e volta (km)
 
-  //   // isso vem de car
-  //   const mediaKmPorLitro = 2.5;            // média de consumo do ônibus
+// async createBudgetMock() {
+//   // ==== MOCKS (valores simulados) ====
+//   const quilometragemTotal = 885.5652;        // ida e volta (km)
 
-  //   // isso vem da api de diesel 
-  //   const precoDiesel = 6.13;               // valor atual do diesel (R$)
+//   // isso vem de car
+//   const mediaKmPorLitro = 2.5;            // média de consumo do ônibus
 
-  //   // isso vem de driver 
-  //   const salarioMotorista = 5500;          // salário mensal (R$)
+//   // isso vem da api de diesel
+//   const precoDiesel = 6.13;               // valor atual do diesel (R$)
 
-  //   // isso vem de driver
-  //   const diariaMotorista = 250;            // valor da diária (R$)
+//   // isso vem de driver
+//   const salarioMotorista = 5500;          // salário mensal (R$)
+
+//   // isso vem de driver
+//   const diariaMotorista = 250;            // valor da diária (R$)
 
 
-  //   const diasFora = 4;                     // quantidade de dias fora
-  //   const pedagio = 225.60;                 // valor total de pedágios (R$)
-  //   const custoFixo = 253.9;               // custo fixo para manter o carro (R$)
-  //   const lucroDesejado = 4000;             // lucro que deseja obter na viagem (R$)
-  //   const impostoPercent = 0.09;            // 9% de imposto
-  //   const numMotoristas = 2;                // número de motoristas na viagem
-  //   const custoExtra = 500;
+//   const diasFora = 4;                     // quantidade de dias fora
+//   const pedagio = 225.60;                 // valor total de pedágios (R$)
+//   const custoFixo = 253.9;               // custo fixo para manter o carro (R$)
+//   const lucroDesejado = 4000;             // lucro que deseja obter na viagem (R$)
+//   const impostoPercent = 0.09;            // 9% de imposto
+//   const numMotoristas = 2;                // número de motoristas na viagem
+//   const custoExtra = 500;
 
-  //   // ==== 1. Quilometragem total e média ====
-  //   const litrosConsumidos = quilometragemTotal / mediaKmPorLitro;
+//   // ==== 1. Quilometragem total e média ====
+//   const litrosConsumidos = quilometragemTotal / mediaKmPorLitro;
 
-  //   // ==== 2. Custo com combustível ====
-  //   const custoCombustivel = litrosConsumidos * precoDiesel;
+//   // ==== 2. Custo com combustível ====
+//   const custoCombustivel = litrosConsumidos * precoDiesel;
 
-  //   // ==== 3. Custo do motorista (salário dividido por 15) * número de motoristas ====
-  //   const custoMotoristaMensal = (salarioMotorista / 15) * numMotoristas;
+//   // ==== 3. Custo do motorista (salário dividido por 15) * número de motoristas ====
+//   const custoMotoristaMensal = (salarioMotorista / 15) * numMotoristas;
 
-  //   // ==== 4. Diária do motorista * número de motoristas ====
-  //   const custoDiaria = diariaMotorista * diasFora;
+//   // ==== 4. Diária do motorista * número de motoristas ====
+//   const custoDiaria = diariaMotorista * diasFora;
 
-  //   // ==== 8. Soma de todos os custos + lucro ====
-  //   const subtotal = custoCombustivel + custoMotoristaMensal + custoDiaria + pedagio + custoFixo + lucroDesejado + custoExtra;
+//   // ==== 8. Soma de todos os custos + lucro ====
+//   const subtotal = custoCombustivel + custoMotoristaMensal + custoDiaria + pedagio + custoFixo + lucroDesejado + custoExtra;
 
-  //   // ==== 9. Imposto (9%) ====
-  //   const imposto = subtotal * impostoPercent;
+//   // ==== 9. Imposto (9%) ====
+//   const imposto = subtotal * impostoPercent;
 
-  //   // ==== 10. Valor total da viagem ====
-  //   const valorTotal = subtotal + imposto;
+//   // ==== 10. Valor total da viagem ====
+//   const valorTotal = subtotal + imposto;
 
-  //   // ==== 13. Verificação de lucratividade ====
-  //   const percentualCombustivel = (custoCombustivel / valorTotal) * 100;
-  //   const houveLucro = percentualCombustivel < 30;
+//   // ==== 13. Verificação de lucratividade ====
+//   const percentualCombustivel = (custoCombustivel / valorTotal) * 100;
+//   const houveLucro = percentualCombustivel < 30;
 
-  //   // ==== Resultado final ====
-  //   const resultado = {
-  //     quilometragemTotal,
-  //     mediaKmPorLitro,
-  //     precoDiesel,
-  //     litrosConsumidos,
-  //     custoCombustivel,
-  //     custoMotoristaMensal,
-  //     custoDiaria,
-  //     pedagio,
-  //     custoFixo,
-  //     lucroDesejado,
-  //     numMotoristas,
-  //     subtotal,
-  //     impostoPercent: impostoPercent * 100,
-  //     imposto,
-  //     valorTotal,
-  //     percentualCombustivel: percentualCombustivel.toFixed(2) + '%',
-  //     houveLucro,
-  //   };
+//   // ==== Resultado final ====
+//   const resultado = {
+//     quilometragemTotal,
+//     mediaKmPorLitro,
+//     precoDiesel,
+//     litrosConsumidos,
+//     custoCombustivel,
+//     custoMotoristaMensal,
+//     custoDiaria,
+//     pedagio,
+//     custoFixo,
+//     lucroDesejado,
+//     numMotoristas,
+//     subtotal,
+//     impostoPercent: impostoPercent * 100,
+//     imposto,
+//     valorTotal,
+//     percentualCombustivel: percentualCombustivel.toFixed(2) + '%',
+//     houveLucro,
+//   };
 
-  //   console.table(resultado);
-  //   return resultado;
-  // }
+//   console.table(resultado);
+//   return resultado;
+// }

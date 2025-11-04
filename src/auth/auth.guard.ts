@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -10,6 +11,8 @@ import { Request } from 'express';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
+  private readonly logger = new Logger(AuthGuard.name);
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
@@ -19,25 +22,39 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractToken(request);
 
-    if (!token) throw new UnauthorizedException('Token is required!');
+    if (!token) {
+      this.logger.warn(`Access denied: token missing for request to ${request.url}`);
+      throw new UnauthorizedException('Token is required!');
+    }
 
     try {
       const secret = this.configService.get<string>('JWT_SECRET');
       const payload = await this.jwtService.verifyAsync(token, { secret });
-      request['user'] = payload; // adiciona user na request
+
+      request['user'] = payload; 
+      this.logger.log(`Access granted for user: ${payload.sub} to ${request.url}`);
       return true;
-    } catch (err) {
+    } 
+    catch (err) {
+      this.logger.warn(`Invalid or expired token for request to ${request.url}`, err.stack);
       throw new UnauthorizedException('Invalid or expired token');
     }
   }
 
   private extractToken(request: Request): string | undefined {
     const cookieToken = request.cookies?.['access_token'];
-    if (cookieToken) return cookieToken;
+    if (cookieToken) {
+      this.logger.log(`Token extracted from cookie for request to ${request.url}`);
+      return cookieToken;
+    }
 
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    if (type === 'Bearer') return token;
+    if (type === 'Bearer' && token) {
+      this.logger.log(`Token extracted from Authorization header for request to ${request.url}`);
+      return token;
+    }
 
+    this.logger.warn(`No token found for request to ${request.url}`);
     return undefined;
   }
 }

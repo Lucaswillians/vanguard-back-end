@@ -1,13 +1,17 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class EmailSenderService {
+  private readonly logger = new Logger(EmailSenderService.name);
+
   @Inject()
   private configService: ConfigService;
 
   async sendEmail(to: string, subject: string, body: string) {
+    this.logger.log(`Preparando para enviar e-mail para: ${to} com assunto: "${subject}"`);
+
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -25,9 +29,11 @@ export class EmailSenderService {
 
     try {
       await transporter.sendMail(mailOptions);
+      this.logger.log(`E-mail enviado com sucesso para: ${to}`);
     }
     catch (error) {
-      console.error('Erro ao enviar e-mail:', error);
+      this.logger.error(`Erro ao enviar e-mail para: ${to}`, error.stack);
+      throw new InternalServerErrorException('Falha ao enviar e-mail');
     }
   }
 }

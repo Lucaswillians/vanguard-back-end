@@ -7,7 +7,7 @@ import { CarService } from '../../car/car.service';
 import { DriverService } from '../../driver/driver.service';
 import { GasApiService } from '../../gasApi/gasApi.service';
 import { GeocodeApiService } from '../../geocodeApi/geocodeApi.service';
-import { EmailSenderService } from '../../email-sender/emailSender.serivce';
+import { EmailSenderService } from '../../email-sender/emailSender.service';
 import { HttpService } from '@nestjs/axios';
 import { CreateBudgetDto } from '../dto/CreateBudget.dto';
 import { BudgetStatus } from '../../enums/BudgetStatus';

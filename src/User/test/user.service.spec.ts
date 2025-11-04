@@ -4,7 +4,7 @@ import { UserService } from '../user.service';
 import { UserEntity } from '../user.entity';
 import { PasswordResetCodeEntity } from '../passwordResetCode/passwordResetCode.entity';
 import { AuthService } from '../../auth/auth.service';
-import { EmailSenderService } from '../../email-sender/emailSender.serivce';
+import { EmailSenderService } from '../../email-sender/emailSender.service';
 import { NotFoundException } from '@nestjs/common';
 import { UpdateUserDto } from '../dto/UpdateUser.dto';
 
