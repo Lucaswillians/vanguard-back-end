@@ -18,7 +18,7 @@ export class GasApiService {
         throw new Error('Preço do diesel em SC não encontrado');
       }
 
-      const preco = parseFloat(precoString.replace(',', '.')); // substitui vírgula por ponto caso venha no formato brasileiro
+      const preco = parseFloat(precoString.replace(',', '.')); 
 
       if (isNaN(preco)) {
         throw new Error('Preço do diesel em SC inválido');
@@ -27,11 +27,12 @@ export class GasApiService {
       return {
         estado: 'SC',
         combustivel: 'Diesel',
-        preco, // agora é número
+        preco, 
         data_coleta: response.data?.data_coleta,
         fonte: response.data?.fonte,
       };
-    } catch (error) {
+    } 
+    catch (error) {
       console.error('Erro ao buscar preços:', error.message);
       throw new Error('Não foi possível buscar os preços do diesel para SC');
     }

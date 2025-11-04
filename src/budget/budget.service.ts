@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { LessThanOrEqual, MoreThanOrEqual, Not, Repository } from 'typeorm';
 import { BudgetEntity } from './budget.entity';
 import { GeocodeApiService } from '../geocodeApi/geocodeApi.service';
 import { GasApiService } from '../gasApi/gasApi.service';
@@ -27,25 +27,28 @@ export class BudgetService {
     private readonly carApiService: CarService,
     private readonly driverApiService: DriverService,
     private readonly http: HttpService,
-
   ) { }
 
   async calculateDistance(origem: string, destino: string) {
-    const origemCoord = await this.geocodeApiService.getCoordinates(origem);
-    const destinoCoord = await this.geocodeApiService.getCoordinates(destino);
+    try {
+      const origemCoord = await this.geocodeApiService.getCoordinates(origem);
+      const destinoCoord = await this.geocodeApiService.getCoordinates(destino);
 
-    const url = `http://router.project-osrm.org/route/v1/driving/${origemCoord.lng},${origemCoord.lat};${destinoCoord.lng},${destinoCoord.lat}?overview=false`;
-    const response = await this.http.axiosRef.get(url);
-    const data = response.data;
+      const url = `http://router.project-osrm.org/route/v1/driving/${origemCoord.lng},${origemCoord.lat};${destinoCoord.lng},${destinoCoord.lat}?overview=false`;
+      const response = await this.http.axiosRef.get(url);
+      const data = response.data;
 
-    if (!data.routes || data.routes.length === 0) {
-      throw new Error('Não foi possível calcular a distância');
+      if (!data.routes || data.routes.length === 0) {
+        throw new BadRequestException('Não foi possível calcular a distância entre origem e destino.');
+      }
+
+      const distance = data.routes[0].distance / 1000; // km
+      const duracao = Math.round(data.routes[0].duration / 60); 
+      return { distance, duracao };
+    } 
+    catch (err) {
+      throw new BadRequestException(`Erro ao calcular distância: ${err.message}`);
     }
-
-    const distance = data.routes[0].distance / 1000; // km
-    const duracao = Math.round(data.routes[0].duration / 60); // minutos
-
-    return { distance, duracao };
   }
 
   async createBudget(dto: CreateBudgetDto, userId: string) {
@@ -66,125 +69,140 @@ export class BudgetService {
 
     const dataIda = new Date(data_hora_viagem);
     const dataVolta = new Date(data_hora_viagem_retorno);
-    const diffTime = Math.abs(dataVolta.getTime() - dataIda.getTime());
-    const diasFora = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    const { distance } = await this.calculateDistance(origem, destino);
-    const totalDistance = distance * 2;
-
-    const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
-    const { driverCost, dailyPriceDriver } = await this.driverApiService.findById(driver_id, userId);
-    const dieselPrice = await this.gasApiService.getDieselSC();
-
-    // 💡 Usa o util para centralizar cálculos
-    const calc = calculateBudgetValues({
-      totalDistance,
-      consumption,
-      dieselPrice: dieselPrice.preco,
-      driverCost,
-      dailyPriceDriver,
-      numMotoristas,
-      diasFora,
-      pedagio,
-      fixed_cost: fixed_cost!,
-      lucroDesejado,
-      impostoPercent,
-      custoExtra,
+    const conflictingBudget = await this.budgetRepository.findOne({
+      where: {
+        driver: { id: driver_id },
+        date_hour_trip: LessThanOrEqual(dataVolta),
+        date_hour_return_trip: MoreThanOrEqual(dataIda),
+      },
     });
 
-    const budget = this.budgetRepository.create({
-      origin: origem,
-      destiny: destino,
-      date_hour_trip: dataIda,
-      date_hour_return_trip: dataVolta,
-      total_distance: totalDistance,
-      trip_price: calc.valorTotal,
-      desired_profit: lucroDesejado,
-      days_out: diasFora,
-      toll: pedagio,
-      fixed_cost,
-      extra_cost: custoExtra,
-      number_of_drivers: numMotoristas,
-      houveLucro: calc.houveLucro,
-      status: BudgetStatus.PENDING,
-      cliente: { id: cliente_id },
-      driver: { id: driver_id },
-      car: { id: car_id },
-      user: { id: userId },
-    });
+    if (conflictingBudget) {
+      throw new ConflictException('O motorista selecionado já possui outra viagem nesse período.');
+    }
 
-    const savedBudget = await this.budgetRepository.save(budget);
+    try {
+      const diffTime = Math.abs(dataVolta.getTime() - dataIda.getTime());
+      const diasFora = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    // Formatação de datas
-    const dataIdaFormatada = dataIda.toLocaleDateString('pt-BR');
-    const horaIdaFormatada = dataIda.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const dataVoltaFormatada = dataVolta.toLocaleDateString('pt-BR');
-    const horaVoltaFormatada = dataVolta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const { distance } = await this.calculateDistance(origem, destino);
+      const totalDistance = distance * 2;
 
-    return {
-      ...savedBudget,
-      data_ida: dataIdaFormatada,
-      hora_ida: horaIdaFormatada,
-      data_retorno: dataVoltaFormatada,
-      hora_retorno: horaVoltaFormatada,
-      ...calc,
-      percentualCombustivel: calc.percentualCombustivel.toFixed(2) + '%',
-      dieselPrice: dieselPrice.preco,
-    };
+      const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
+      const { driverCost, dailyPriceDriver } = await this.driverApiService.findById(driver_id, userId);
+      const dieselPrice = await this.gasApiService.getDieselSC();
+
+      const calc = calculateBudgetValues({
+        totalDistance,
+        consumption,
+        dieselPrice: dieselPrice.preco,
+        driverCost,
+        dailyPriceDriver,
+        numMotoristas,
+        diasFora,
+        pedagio,
+        fixed_cost: fixed_cost!,
+        lucroDesejado,
+        impostoPercent,
+        custoExtra,
+      });
+
+      const budget = this.budgetRepository.create({
+        origin: origem,
+        destiny: destino,
+        date_hour_trip: dataIda,
+        date_hour_return_trip: dataVolta,
+        total_distance: totalDistance,
+        trip_price: calc.valorTotal,
+        desired_profit: lucroDesejado,
+        days_out: diasFora,
+        toll: pedagio,
+        fixed_cost,
+        extra_cost: custoExtra,
+        number_of_drivers: numMotoristas,
+        houveLucro: calc.houveLucro,
+        status: BudgetStatus.PENDING,
+        cliente: { id: cliente_id },
+        driver: { id: driver_id },
+        car: { id: car_id },
+        user: { id: userId },
+      });
+
+      const savedBudget = await this.budgetRepository.save(budget);
+
+      return {
+        ...savedBudget,
+        data_ida: dataIda.toLocaleDateString('pt-BR'),
+        hora_ida: dataIda.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        data_retorno: dataVolta.toLocaleDateString('pt-BR'),
+        hora_retorno: dataVolta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        ...calc,
+        percentualCombustivel: calc.percentualCombustivel.toFixed(2) + '%',
+        dieselPrice: dieselPrice.preco,
+      };
+    } catch (err) {
+      throw new BadRequestException(`Erro ao criar orçamento: ${err.message}`);
+    }
   }
 
   async getAllBudgets(userId: string) {
-    const savedBudget = await this.budgetRepository.find({
-      where: { user: { id: userId } },
-      relations: ['cliente', 'driver', 'car'],
-      order: { createdAt: 'DESC' }
-    });
+    try {
+      const savedBudget = await this.budgetRepository.find({
+        where: { user: { id: userId } },
+        relations: ['cliente', 'driver', 'car'],
+        order: { createdAt: 'DESC' },
+      });
 
-    const budgetList = savedBudget.map(
-      (budget) =>
-        new GetBudgetDto(
-          budget.id,
-          budget.origin,
-          budget.destiny,
-          budget.date_hour_trip,
-          budget.date_hour_return_trip,
-          budget.cliente?.name,
-          budget.driver?.name,
-          budget.car?.model,
-          budget.total_distance,
-          budget.trip_price,
-          budget.desired_profit,
-          budget.status,
-        ),
-    );
-
-    return budgetList;
+      return savedBudget.map(
+        (budget) =>
+          new GetBudgetDto(
+            budget.id,
+            budget.origin,
+            budget.destiny,
+            budget.date_hour_trip,
+            budget.date_hour_return_trip,
+            budget.cliente?.name,
+            budget.driver?.name,
+            budget.car?.model,
+            budget.total_distance,
+            budget.trip_price,
+            budget.desired_profit,
+            budget.status,
+          ),
+      );
+    } 
+    catch (err) {
+      throw new BadRequestException(`Erro ao buscar orçamentos: ${err.message}`);
+    }
   }
 
-
   async getAllTrips(userId: string) {
-    const savedBudget = await this.budgetRepository.find({
-      where: { user: { id: userId }, status: BudgetStatus.APPROVED }, 
-      relations: ['cliente', 'driver', 'car'],
-      order: { updatedAt: 'DESC' }
-    });
+    try {
+      const savedBudget = await this.budgetRepository.find({
+        where: { user: { id: userId }, status: BudgetStatus.APPROVED },
+        relations: ['cliente', 'driver', 'car'],
+        order: { updatedAt: 'DESC' },
+      });
 
-    const budgetList = savedBudget.map(
-      (budget) =>
-        new GetTripDetails(
-          budget.id,
-          budget.origin,
-          budget.destiny,
-          budget.date_hour_trip,
-          budget.date_hour_return_trip,
-          budget.cliente?.name,
-          budget.driver?.name,
-          budget.car?.model,
-          budget.total_distance,
-        ),
-    );
-
-    return budgetList;
+      return savedBudget.map(
+        (budget) =>
+          new GetTripDetails(
+            budget.id,
+            budget.origin,
+            budget.destiny,
+            budget.date_hour_trip,
+            budget.date_hour_return_trip,
+            budget.cliente?.name,
+            budget.driver?.name,
+            budget.car?.model,
+            budget.total_distance,
+          ),
+      );
+    } 
+    catch (err) {
+      throw new BadRequestException(`Erro ao buscar viagens: ${err.message}`);
+    }
   }
 
   async updateBudget(id: string, dto: UpdateBudgetDto, userId: string) {
@@ -194,124 +212,126 @@ export class BudgetService {
     });
 
     if (!budget) {
-      throw new NotFoundException('Orçamento não encontrado ou não pertence a este usuário');
+      throw new NotFoundException('Orçamento não encontrado ou não pertence a este usuário.');
     }
 
-    const oldOrigem = budget.origin;
-    const oldDestino = budget.destiny;
-    const oldDataIda = budget.date_hour_trip;
-    const oldDataVolta = budget.date_hour_return_trip;
+    try {
+      const origem = dto.origem ?? budget.origin;
+      const destino = dto.destino ?? budget.destiny;
+      const dataIda = new Date(dto.data_hora_viagem ?? budget.date_hour_trip);
+      const dataVolta = new Date(dto.data_hora_viagem_retorno ?? budget.date_hour_return_trip);
+      const driver_id = dto.driver_id ?? budget.driver.id;
+      const car_id = dto.car_id ?? budget.car.id;
+      const cliente_id = dto.cliente_id ?? budget.cliente.id;
+      const numMotoristas = dto.numMotoristas ?? budget.number_of_drivers;
+      const pedagio = dto.pedagio ?? budget.toll ?? 0;
+      const lucroDesejado = dto.lucroDesejado ?? budget.desired_profit;
+      const impostoPercent = dto.impostoPercent ?? 0;
+      const custoExtra = dto.custoExtra ?? budget.extra_cost;
+      const status = dto.status ?? budget.status;
 
-    const origem = dto.origem ?? budget.origin;
-    const destino = dto.destino ?? budget.destiny;
-    const data_hora_viagem = dto.data_hora_viagem ?? budget.date_hour_trip;
-    const data_hora_viagem_retorno = dto.data_hora_viagem_retorno ?? budget.date_hour_return_trip;
-    const pedagio: number = dto.pedagio ?? budget.toll ?? 0;
-    const lucroDesejado = dto.lucroDesejado ?? budget.desired_profit;
-    const impostoPercent = dto.impostoPercent ?? 0;
-    const numMotoristas = dto.numMotoristas ?? budget.number_of_drivers;
-    const custoExtra = dto.custoExtra ?? budget.extra_cost;
-    const driver_id = dto.driver_id ?? budget.driver.id;
-    const car_id = dto.car_id ?? budget.car.id;
-    const cliente_id = dto.cliente_id ?? budget.cliente.id;
-    const status = dto.status ?? budget.status;
+      const conflictingBudget = await this.budgetRepository.findOne({
+        where: {
+          driver: { id: driver_id },
+          date_hour_trip: LessThanOrEqual(dataVolta),
+          date_hour_return_trip: MoreThanOrEqual(dataIda),
+          id: Not(id),
+        },
+      });
+      if (conflictingBudget) {
+        throw new ConflictException('O motorista selecionado já possui outra viagem nesse período.');
+      }
 
-    const dataIda = new Date(data_hora_viagem);
-    const dataVolta = new Date(data_hora_viagem_retorno);
-    const diffTime = Math.abs(dataVolta.getTime() - dataIda.getTime());
-    const diasFora = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const diffTime = Math.abs(dataVolta.getTime() - dataIda.getTime());
+      const diasFora = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const { distance } = await this.calculateDistance(origem, destino);
+      const totalDistance = distance * 2;
 
-    const { distance } = await this.calculateDistance(origem, destino);
-    const totalDistance = distance * 2;
+      const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
+      const { driverCost, dailyPriceDriver, email: driverEmail, name: driverName } =
+        await this.driverApiService.findById(driver_id, userId);
+      const dieselPrice = await this.gasApiService.getDieselSC();
 
-    const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
-    const { driverCost, dailyPriceDriver, email: driverEmail, name: driverName } =
-      await this.driverApiService.findById(driver_id, userId);
-    const dieselPrice = await this.gasApiService.getDieselSC();
+      const calc = calculateBudgetValues({
+        totalDistance,
+        consumption,
+        dieselPrice: dieselPrice.preco,
+        driverCost,
+        dailyPriceDriver,
+        numMotoristas,
+        diasFora,
+        pedagio,
+        fixed_cost: fixed_cost!,
+        lucroDesejado,
+        impostoPercent,
+        custoExtra,
+      });
 
-    const calc = calculateBudgetValues({
-      totalDistance,
-      consumption,
-      dieselPrice: dieselPrice.preco,
-      driverCost,
-      dailyPriceDriver,
-      numMotoristas,
-      diasFora,
-      pedagio,
-      fixed_cost: fixed_cost!,
-      lucroDesejado,
-      impostoPercent,
-      custoExtra,
-    });
+      Object.assign(budget, {
+        origin: origem,
+        destiny: destino,
+        date_hour_trip: dataIda,
+        date_hour_return_trip: dataVolta,
+        total_distance: totalDistance,
+        trip_price: calc.valorTotal,
+        desired_profit: lucroDesejado,
+        days_out: diasFora,
+        toll: pedagio,
+        fixed_cost,
+        extra_cost: custoExtra,
+        number_of_drivers: numMotoristas,
+        houveLucro: calc.houveLucro,
+        status,
+        car: { id: car_id } as any,
+        driver: { id: driver_id } as any,
+        cliente: { id: cliente_id } as any,
+        user: { id: userId } as any,
+      });
 
-    Object.assign(budget, {
-      origin: origem,
-      destiny: destino,
-      date_hour_trip: dataIda,
-      date_hour_return_trip: dataVolta,
-      total_distance: totalDistance,
-      trip_price: calc.valorTotal,
-      desired_profit: lucroDesejado,
-      days_out: diasFora,
-      toll: pedagio,
-      fixed_cost,
-      extra_cost: custoExtra,
-      number_of_drivers: numMotoristas,
-      houveLucro: calc.houveLucro,
-      status,
-      car: { id: car_id } as any,
-      driver: { id: driver_id } as any,
-      cliente: { id: cliente_id } as any,
-      user: { id: userId } as any,
-    });
+      const updatedBudget = await this.budgetRepository.save(budget);
 
-    const updatedBudget = await this.budgetRepository.save(budget);
-
-    const origemAlterada = oldOrigem !== origem;
-    const destinoAlterado = oldDestino !== destino;
-    const dataAlterada =
-      oldDataIda.getTime() !== dataIda.getTime() ||
-      oldDataVolta.getTime() !== dataVolta.getTime();
-
-    if (origemAlterada || destinoAlterado || dataAlterada) {
       const dataIdaFormatada = dataIda.toLocaleDateString('pt-BR');
       const horaIdaFormatada = dataIda.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const dataVoltaFormatada = dataVolta.toLocaleDateString('pt-BR');
       const horaVoltaFormatada = dataVolta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      const emailSubject = 'Atualização na sua viagem';
-      const emailText = `
-      Olá ${driverName},
+      if (
+        budget.origin !== origem ||
+        budget.destiny !== destino ||
+        budget.date_hour_trip.getTime() !== dataIda.getTime() ||
+        budget.date_hour_return_trip.getTime() !== dataVolta.getTime()
+      ) {
+        const emailSubject = 'Atualização na sua viagem';
+        const emailText = `
+          Olá ${driverName},
 
-      Houve uma atualização nos detalhes da sua viagem.
+          Houve uma atualização nos detalhes da sua viagem.
 
-      Origem: ${origem}
-      Destino: ${destino}
-      Data e hora de ida: ${dataIdaFormatada} às ${horaIdaFormatada}
-      Data e hora de retorno: ${dataVoltaFormatada} às ${horaVoltaFormatada}
-      Número de dias fora: ${diasFora}
+          Origem: ${origem}
+          Destino: ${destino}
+          Data e hora de ida: ${dataIdaFormatada} às ${horaIdaFormatada}
+          Data e hora de retorno: ${dataVoltaFormatada} às ${horaVoltaFormatada}
+          Número de dias fora: ${diasFora}
 
-      Por favor, verifique os novos detalhes.
-      `;
+          Por favor, verifique os novos detalhes.
+        `;
 
-      await this.emailSender.sendEmail(driverEmail, emailSubject, emailText);
+        await this.emailSender.sendEmail(driverEmail, emailSubject, emailText);
+      }
+
+      return {
+        ...updatedBudget,
+        data_ida: dataIdaFormatada,
+        hora_ida: horaIdaFormatada,
+        data_retorno: dataVoltaFormatada,
+        hora_retorno: horaVoltaFormatada,
+        ...calc,
+        percentualCombustivel: calc.percentualCombustivel.toFixed(2) + '%',
+        dieselPrice: dieselPrice.preco,
+      };
+    } catch (err) {
+      throw new BadRequestException(`Erro ao atualizar orçamento: ${err.message}`);
     }
-
-    const dataIdaFormatada = dataIda.toLocaleDateString('pt-BR');
-    const horaIdaFormatada = dataIda.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const dataVoltaFormatada = dataVolta.toLocaleDateString('pt-BR');
-    const horaVoltaFormatada = dataVolta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-    return {
-      ...updatedBudget,
-      data_ida: dataIdaFormatada,
-      hora_ida: horaIdaFormatada,
-      data_retorno: dataVoltaFormatada,
-      hora_retorno: horaVoltaFormatada,
-      ...calc,
-      percentualCombustivel: calc.percentualCombustivel.toFixed(2) + '%',
-      dieselPrice: dieselPrice.preco,
-    };
   }
 
   async updateBudgetStatus(id: string, dto: UpdateBudgetStatusDto, userId: string) {
@@ -321,41 +341,46 @@ export class BudgetService {
     });
 
     if (!budget) {
-      throw new NotFoundException('Orçamento não encontrado ou não pertence a este usuário');
+      throw new NotFoundException('Orçamento não encontrado ou não pertence a este usuário.');
     }
 
-    budget.status = dto.status;
-    const updatedBudget = await this.budgetRepository.save(budget);
+    try {
+      budget.status = dto.status;
+      const updatedBudget = await this.budgetRepository.save(budget);
 
-    if (dto.status === BudgetStatus.APPROVED) {
-      const driver = await this.driverApiService.findById(budget.driver.id, userId);
+      if (dto.status === BudgetStatus.APPROVED) {
+        const driver = await this.driverApiService.findById(budget.driver.id, userId);
 
-      const dataIdaFormatada = budget.date_hour_trip.toLocaleDateString('pt-BR');
-      const horaIdaFormatada = budget.date_hour_trip.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const dataVoltaFormatada = budget.date_hour_return_trip.toLocaleDateString('pt-BR');
-      const horaVoltaFormatada = budget.date_hour_return_trip.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const dataIdaFormatada = budget.date_hour_trip.toLocaleDateString('pt-BR');
+        const horaIdaFormatada = budget.date_hour_trip.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const dataVoltaFormatada = budget.date_hour_return_trip.toLocaleDateString('pt-BR');
+        const horaVoltaFormatada = budget.date_hour_return_trip.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      const emailSubject = 'Nova Viagem Confirmada 🚚';
-      const emailText = `
-      Olá ${driver.name},
+        const emailSubject = 'Nova Viagem Confirmada 🚚';
+        const emailText = `
+          Olá ${driver.name},
 
-      Você tem uma nova viagem! Aqui estão os detalhes:
+          Você tem uma nova viagem! Aqui estão os detalhes:
 
-      Origem: ${budget.origin}
-      Destino: ${budget.destiny}
-      Data e hora de ida: ${dataIdaFormatada} às ${horaIdaFormatada}
-      Data e hora de retorno: ${dataVoltaFormatada} às ${horaVoltaFormatada}
-      Número de dias fora: ${budget.days_out}
+          Origem: ${budget.origin}
+          Destino: ${budget.destiny}
+          Data e hora de ida: ${dataIdaFormatada} às ${horaIdaFormatada}
+          Data e hora de retorno: ${dataVoltaFormatada} às ${horaVoltaFormatada}
+          Número de dias fora: ${budget.days_out}
 
-      Boa viagem e dirija com segurança!
-    `;
+          Boa viagem e dirija com segurança!
+        `;
 
-      await this.emailSender.sendEmail(driver.email, emailSubject, emailText);
+        await this.emailSender.sendEmail(driver.email, emailSubject, emailText);
+      }
+
+      return updatedBudget;
     }
-
-    return updatedBudget;
+    catch (err) {
+      throw new BadRequestException(`Erro ao atualizar status do orçamento: ${err.message}`);
+    }
   }
-
+}
 
   // async createBudgetMock() {
   //   // ==== MOCKS (valores simulados) ====
@@ -431,4 +456,3 @@ export class BudgetService {
   //   console.table(resultado);
   //   return resultado;
   // }
-}

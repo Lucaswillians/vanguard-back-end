@@ -1,6 +1,6 @@
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { Inject, Injectable, NotFoundException, forwardRef } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException, BadRequestException, forwardRef } from "@nestjs/common";
 import { UserEntity } from "./user.entity";
 import { AuthService } from "../auth/auth.service";
 import { GetUserDto } from "./dto/GetUset.dto";
@@ -28,46 +28,78 @@ export class UserService {
   ) { }
 
   async createUser(userData: CreateUserDto) {
-    const userEntity = new UserEntity();
-    const hashedPassword = await this.authService.hashPassword(userData.password);
+    try {
+      const userEntity = new UserEntity();
+      const hashedPassword = await this.authService.hashPassword(userData.password);
 
-    userEntity.username = userData.username;
-    userEntity.email = userData.email;
-    userEntity.password = hashedPassword;
+      userEntity.username = userData.username;
+      userEntity.email = userData.email;
+      userEntity.password = hashedPassword;
 
-    return this.userRepository.save(userEntity);
+      return await this.userRepository.save(userEntity);
+    } 
+    catch (err) {
+      throw new BadRequestException(`Erro ao criar usuário: ${err.message}`);
+    }
   }
 
   async getUsers() {
-    const savedUsers = await this.userRepository.find();
-    const usersList = savedUsers.map(
-      (user) => new GetUserDto(user.id, user.username, user.email, user.password)
-    );
-
-    return usersList;
+    try {
+      const savedUsers = await this.userRepository.find();
+      return savedUsers.map(
+        (user) => new GetUserDto(user.id, user.username, user.email, user.password)
+      );
+    } 
+    catch (err) {
+      throw new BadRequestException(`Erro ao buscar usuários: ${err.message}`);
+    }
   }
 
   async getOneJWTverify(email: string) {
-    const name = await this.userRepository.findOne({ where: { email } });
-    if (!name) throw new NotFoundException(`User ${name} not found`);
-    return new GetUserDto(name.id, name.username, name.email, name.password);
+    try {
+      const user = await this.userRepository.findOne({ where: { email } });
+      if (!user) throw new NotFoundException(`Usuário com email ${email} não encontrado`);
+      return new GetUserDto(user.id, user.username, user.email, user.password);
+    } 
+    catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      throw new BadRequestException(`Erro ao buscar usuário: ${err.message}`);
+    }
   }
 
   async getOne(id: string) {
-    const userId = await this.userRepository.findOne({ where: { id } });
-    if (!userId) throw new NotFoundException(`User with id ${id} not found`);
-    return new GetUserDto(userId.id, userId.username, userId.email, userId.password);
+    try {
+      const user = await this.userRepository.findOne({ where: { id } });
+      if (!user) throw new NotFoundException(`Usuário com id ${id} não encontrado`);
+      return new GetUserDto(user.id, user.username, user.email, user.password);
+    } 
+    catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      throw new BadRequestException(`Erro ao buscar usuário: ${err.message}`);
+    }
   }
 
   async updateUser(id: string, newData: UpdateUserDto) {
-    const user = await this.userRepository.preload({ id, ...newData });
-    if (!user) throw new NotFoundException(`User with id ${id} not found`);
-    if (newData.password) user.password = await this.authService.hashPassword(newData.password);
-    return await this.userRepository.save(user);
+    try {
+      const user = await this.userRepository.preload({ id, ...newData });
+      if (!user) throw new NotFoundException(`Usuário com id ${id} não encontrado`);
+      if (newData.password) user.password = await this.authService.hashPassword(newData.password);
+      return await this.userRepository.save(user);
+    } 
+    catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      throw new BadRequestException(`Erro ao atualizar usuário: ${err.message}`);
+    }
   }
 
   async deleteUser(id: string) {
-    return await this.userRepository.delete(id);
+    try {
+      await this.userRepository.delete(id);
+      return { message: 'Usuário deletado com sucesso' };
+    } 
+    catch (err) {
+      throw new BadRequestException(`Erro ao deletar usuário: ${err.message}`);
+    }
   }
 
   private generateCode(): string {
@@ -75,58 +107,74 @@ export class UserService {
   }
 
   async requestPasswordReset(email: string) {
-    const user = await this.userRepository.findOne({ where: { email } });
-    if (!user) throw new NotFoundException('Usuário não encontrado.');
+    try {
+      const user = await this.userRepository.findOne({ where: { email } });
+      if (!user) throw new NotFoundException('Usuário não encontrado.');
 
-    const code = this.generateCode();
-    const resetRecord = this.passwordResetRepository.create({ email, code });
-    await this.passwordResetRepository.save(resetRecord);
+      const code = this.generateCode();
+      const resetRecord = this.passwordResetRepository.create({ email, code });
+      await this.passwordResetRepository.save(resetRecord);
 
-    const subject = 'Solicitação de redefinição de senha';
-    const text = `
-    Usuário: ${user.username} (${user.email})
-    Código de autorização: ${code}
-    Válido por ${UserService.RESET_CODE_TTL_MIN} minutos.
-`;
+      const subject = 'Solicitação de redefinição de senha';
+      const text = `
+      Usuário: ${user.username} (${user.email})
+      Código de autorização: ${code}
+      Válido por ${UserService.RESET_CODE_TTL_MIN} minutos.
+    `;
 
-    await this.emailSender.sendEmail(user.email, subject, text);
-
-    return { message: 'Código de redefinição enviado para seu e-mail.' };
+      await this.emailSender.sendEmail(user.email, subject, text);
+      return { message: 'Código de redefinição enviado para seu e-mail.' };
+    } 
+    catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      throw new BadRequestException(`Erro ao solicitar redefinição de senha: ${err.message}`);
+    }
   }
 
-
   async validateResetCode(email: string, code: string) {
-    const record = await this.passwordResetRepository.findOne({ where: { email, code } });
-    if (!record) throw new NotFoundException('Código inválido ou expirado.');
+    try {
+      const record = await this.passwordResetRepository.findOne({ where: { email, code } });
+      if (!record) throw new NotFoundException('Código inválido ou expirado.');
 
-    const ageMinutes = (Date.now() - record.createdAt.getTime()) / 60000;
-    if (ageMinutes > UserService.RESET_CODE_TTL_MIN) {
-      await this.passwordResetRepository.delete(record.id);
-      throw new NotFoundException('Código expirado.');
+      const ageMinutes = (Date.now() - record.createdAt.getTime()) / 60000;
+      if (ageMinutes > UserService.RESET_CODE_TTL_MIN) {
+        await this.passwordResetRepository.delete(record.id);
+        throw new NotFoundException('Código expirado.');
+      }
+
+      return { valid: true };
+    } 
+    catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      throw new BadRequestException(`Erro ao validar código de redefinição: ${err.message}`);
     }
-
-    return { valid: true };
   }
 
   async resetPassword(email: string, code: string, newPassword: string) {
-    const record = await this.passwordResetRepository.findOne({ where: { email, code } });
-    if (!record) throw new NotFoundException('Código inválido ou expirado.');
+    try {
+      const record = await this.passwordResetRepository.findOne({ where: { email, code } });
+      if (!record) throw new NotFoundException('Código inválido ou expirado.');
 
-    const ageMinutes = (Date.now() - record.createdAt.getTime()) / 60000;
-    if (ageMinutes > UserService.RESET_CODE_TTL_MIN) {
+      const ageMinutes = (Date.now() - record.createdAt.getTime()) / 60000;
+      if (ageMinutes > UserService.RESET_CODE_TTL_MIN) {
+        await this.passwordResetRepository.delete(record.id);
+        throw new NotFoundException('Código expirado.');
+      }
+
+      const user = await this.userRepository.findOne({ where: { email } });
+      if (!user) throw new NotFoundException('Usuário não encontrado.');
+
+      user.password = await this.authService.hashPassword(newPassword);
+      await this.userRepository.save(user);
+
       await this.passwordResetRepository.delete(record.id);
-      throw new NotFoundException('Código expirado.');
+
+      await this.emailSender.sendEmail(email, 'Senha alterada', 'Sua senha foi alterada com sucesso.');
+      return { message: 'Senha redefinida com sucesso.' };
+    } 
+    catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      throw new BadRequestException(`Erro ao redefinir senha: ${err.message}`);
     }
-
-    const user = await this.userRepository.findOne({ where: { email } });
-    if (!user) throw new NotFoundException('Usuário não encontrado.');
-
-    user.password = await this.authService.hashPassword(newPassword);
-    await this.userRepository.save(user);
-
-    await this.passwordResetRepository.delete(record.id);
-
-    await this.emailSender.sendEmail(email, 'Senha alterada', 'Sua senha foi alterada com sucesso.');
-    return { message: 'Senha redefinida com sucesso.' };
   }
 }
