@@ -25,10 +25,10 @@ export class BudgetController {
   private readonly budgetService: BudgetService;
 
 
-  @Get('mock')
-  async getMockBudget() {
-    return this.budgetService.createBudgetMock();
-  }
+  // @Get('mock')
+  // async getMockBudget() {
+  //   return this.budgetService.createBudgetMock();
+  // }
 
 
   @Post()

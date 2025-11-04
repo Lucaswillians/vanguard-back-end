@@ -3,7 +3,7 @@ import { CarService } from "./car.service";
 import { CreateCarDto } from "./dto/CreateCar.dto";
 import { GetCarDto } from "./dto/GetCar.dto";
 import { UpdateCarDto } from "./dto/UpdateCar.dto";
-import { AuthGuard } from "src/auth/auth.guard";
+import { AuthGuard } from "../auth/auth.guard";
 
 @UseGuards(AuthGuard)
 @Controller('/car')

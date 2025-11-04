@@ -71,21 +71,37 @@
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
   },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+"jest": {
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
+  "rootDir": "src",
+  "testRegex": ".*\\.spec\\.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "collectCoverageFrom": [
+    "**/*.(t|j)s",
+    "!**/*.module.ts",
+    "!**/dto/**",
+    "!**/*.entity.ts",
+    "!**/migrations/**",
+    "!**/config/**",
+    "!**/main.ts",
+    "!**/enums/**"
+  ],
+  "coverageDirectory": "../coverage",
+  "testEnvironment": "node",
+  "coverageReporters": ["text", "lcov"],
+  "coverageThreshold": {
+    "global": {
+      "branches": 75,
+      "functions": 75,
+      "lines": 75,
+      "statements": 75
+    }
   }
+}
 }

@@ -3,7 +3,7 @@ import { ClientService } from "./client.service";
 import { CreateClientDto } from "./dto/CreateClient.dto";
 import { GetClientDto } from "./dto/GetClient.dto";
 import { UpdateClientDto } from "./dto/UpdateClient.dto";
-import { AuthGuard } from "src/auth/auth.guard";
+import { AuthGuard } from "../auth/auth.guard";
 
 @UseGuards(AuthGuard)
 @Controller('/client')

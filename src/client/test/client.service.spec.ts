@@ -1,29 +1,33 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ClientEntity } from '../client.entity';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ClientService } from '../client.service';
+import { ClientEntity } from '../client.entity';
 import { CreateClientDto } from '../dto/CreateClient.dto';
 import { UpdateClientDto } from '../dto/UpdateClient.dto';
-import { GetClientDto } from '../dto/GetClient.dto';
 
 describe('ClientService', () => {
   let service: ClientService;
-  let repo: Repository<ClientEntity>;
+  let repo: any;
 
   const mockClient = {
     id: '1',
-    name: 'João Silva',
-    email: 'joao@example.com',
-    telephone: '11999999999'
+    name: 'Cliente 1',
+    email: 'cliente@example.com',
+    phone: '123456789',
+    user: { id: 'user-123' },
   };
 
   const mockRepo = {
+    create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
+    findOne: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
   };
+
+  const mockUserId = 'user-123';
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -34,47 +38,88 @@ describe('ClientService', () => {
     }).compile();
 
     service = module.get<ClientService>(ClientService);
-    repo = module.get<Repository<ClientEntity>>(getRepositoryToken(ClientEntity));
+    repo = module.get(getRepositoryToken(ClientEntity));
   });
 
-  it('should create a client', async () => {
-    mockRepo.save.mockResolvedValue(mockClient);
-
-    const dto: CreateClientDto = {
-      name: 'João Silva',
-      email: 'joao@example.com',
-      telephone: '11999999999'
-    };
-
-    const result = await service.createClient(dto);
-
-    expect(result).toEqual(mockClient);
-    expect(mockRepo.save).toHaveBeenCalledWith(expect.objectContaining(dto));
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should return all clients', async () => {
-    mockRepo.find.mockResolvedValue([mockClient]);
-
-    const result = await service.getClients();
-
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual(new GetClientDto(mockClient.id, mockClient.name, mockClient.email, mockClient.telephone));
+  it('should be defined', () => {
+    expect(service).toBeDefined();
   });
 
-  it('should update a client', async () => {
-    mockRepo.update.mockResolvedValue({ affected: 1 });
+  describe('postClient', () => {
+    it('should create and save a client', async () => {
+      const createDto: CreateClientDto = {
+        name: 'Cliente 1',
+        email: 'cliente@example.com',
+        telephone: '123456789',
+      };
 
-    const dto: UpdateClientDto = { name: 'test Updated', email: 'test@gmail.com', telephone: '421451515' };
-    await service.updateClient('1', dto);
+      repo.create.mockReturnValue(mockClient);
+      repo.save.mockResolvedValue(mockClient);
 
-    expect(mockRepo.update).toHaveBeenCalledWith('1', dto);
+      const result = await service.postClient(createDto, mockUserId);
+
+      expect(repo.create).toHaveBeenCalledWith({
+        ...createDto,
+        user: { id: mockUserId },
+      });
+      expect(repo.save).toHaveBeenCalledWith(mockClient);
+      expect(result).toEqual(mockClient);
+    });
   });
 
-  it('should delete a client', async () => {
-    mockRepo.delete.mockResolvedValue({ affected: 1 });
+  describe('getClients', () => {
+    it('should return all clients for a user', async () => {
+      repo.find.mockResolvedValue([mockClient]);
 
-    await service.deleteClient('1');
+      const result = await service.getClients(mockUserId);
 
-    expect(mockRepo.delete).toHaveBeenCalledWith('1');
+      expect(repo.find).toHaveBeenCalledWith({
+        where: { user: { id: mockUserId } },
+        relations: ['user'],
+      });
+      expect(result).toEqual([mockClient]);
+    });
   });
+
+  describe('findById', () => {
+    it('should return a client if found', async () => {
+      repo.findOne.mockResolvedValue(mockClient);
+
+      const result = await service.findById('1', mockUserId);
+
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { id: '1', user: { id: mockUserId } },
+        relations: ['user'],
+      });
+      expect(result).toEqual(mockClient);
+    });
+
+    it('should throw NotFoundException if client not found', async () => {
+      repo.findOne.mockResolvedValue(undefined);
+
+      await expect(service.findById('999', mockUserId)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('updateClient', () => {
+    it('should throw NotFoundException if client not found', async () => {
+      const updateDto: UpdateClientDto = { name: 'Cliente Atualizado', email: 'updated@example.com', telephone: '987654321' };
+      jest.spyOn(service, 'findById').mockRejectedValueOnce(new NotFoundException());
+
+      await expect(service.updateClient('999', updateDto, mockUserId)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('deleteClient', () => {
+    it('should throw NotFoundException if client not found', async () => {
+      jest.spyOn(service, 'findById').mockRejectedValueOnce(new NotFoundException());
+
+      await expect(service.deleteClient('999', mockUserId)).rejects.toThrow(NotFoundException);
+    });
+  });
+
 });

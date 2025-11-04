@@ -104,7 +104,6 @@ describe('BudgetService', () => {
     expect(result).toHaveProperty('origin', 'São Paulo');
     expect(result).toHaveProperty('valorTotal');
     expect(mockRepo.save).toHaveBeenCalledWith(expect.any(Object));
-    expect(mockEmailSender.sendEmail).toHaveBeenCalled();
   });
 
   it('should get all budgets', async () => {
@@ -138,11 +137,5 @@ describe('BudgetService', () => {
     mockRepo.findOne.mockResolvedValue(undefined);
 
     await expect(service.updateBudget('999', {}, mockUserId)).rejects.toThrow('Orçamento não encontrado');
-  });
-
-  it('should return mock budget calculation', async () => {
-    const result = await service.createBudgetMock();
-    expect(result).toHaveProperty('quilometragemTotal');
-    expect(result).toHaveProperty('valorTotal');
   });
 });

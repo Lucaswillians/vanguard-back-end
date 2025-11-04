@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ClientController } from '../client.controller';
 import { ClientService } from '../client.service';
+import { AuthGuard } from '../../auth/auth.guard';
 import { CreateClientDto } from '../dto/CreateClient.dto';
 import { UpdateClientDto } from '../dto/UpdateClient.dto';
 
@@ -8,74 +9,75 @@ describe('ClientController', () => {
   let controller: ClientController;
   let service: ClientService;
 
-  const mockService = {
-    createClient: jest.fn(),
-    getClients: jest.fn(),
-    updateClient: jest.fn(),
-    deleteClient: jest.fn(),
+  const mockClientService = {
+    postClient: jest.fn().mockResolvedValue({ id: '1', nome: 'João' }),
+    getClients: jest.fn().mockResolvedValue([{ id: '1', nome: 'Maria' }]),
+    updateClient: jest.fn().mockResolvedValue({ id: '1', nome: 'Pedro' }),
+    deleteClient: jest.fn().mockResolvedValue({ id: '1', deleted: true }),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ClientController],
-      providers: [{ provide: ClientService, useValue: mockService }],
-    }).compile();
+      providers: [
+        { provide: ClientService, useValue: mockClientService },
+      ],
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<ClientController>(ClientController);
     service = module.get<ClientService>(ClientService);
   });
 
-  it('should create a client', async () => {
-    const dto: CreateClientDto = {
-      name: 'João Silva',
-      email: 'joao@example.com',
-      telephone: '11999999999'
-    };
-
-    const mockResult = { id: '1', ...dto };
-    mockService.createClient.mockResolvedValue(mockResult);
-
-    const result = await controller.postClient(dto);
-
-    expect(result).toEqual({
-      user: mockResult,
-      message: 'Client created with success!'
-    });
-    expect(mockService.createClient).toHaveBeenCalledWith(dto);
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should return all clients', async () => {
-    const mockResult = [{ id: '1', name: 'João Silva', email: 'joao@example.com', telephone: '11999999999' }];
-    mockService.getClients.mockResolvedValue(mockResult);
-
-    const result = await controller.getClient();
-
-    expect(result).toEqual(mockResult);
-    expect(mockService.getClients).toHaveBeenCalled();
+  it('deve estar definido', () => {
+    expect(controller).toBeDefined();
   });
 
-  it('should update a client', async () => {
-    const dto: UpdateClientDto = { name: 'test Updated', email: 'test@gmail.com', telephone: '421451515' };
-    mockService.updateClient.mockResolvedValue({ id: '1', ...dto });
+  it('deve criar um cliente', async () => {
+    const dto: CreateClientDto = { nome: 'João', email: 'joao@email.com' } as any;
+    const req = { user: { sub: 1 } } as any;
 
-    const result = await controller.updateClient('1', dto);
-
+    const result = await controller.postClient(dto, req);
     expect(result).toEqual({
-      user: { id: '1', ...dto },
-      message: 'Client updated with success!'
+      client: { id: '1', nome: 'João' },
+      message: 'Driver created with success!',
     });
-    expect(mockService.updateClient).toHaveBeenCalledWith('1', dto);
+    expect(service.postClient).toHaveBeenCalledWith(dto, 1);
   });
 
-  it('should delete a client', async () => {
-    mockService.deleteClient.mockResolvedValue({ id: '1' });
+  it('deve retornar todos os clientes', async () => {
+    const req = { user: { sub: 1 } } as any;
+    const result = await controller.getClients(req);
+    expect(result).toEqual([{ id: '1', nome: 'Maria' }]);
+    expect(service.getClients).toHaveBeenCalledWith(1);
+  });
 
-    const result = await controller.deleteClient('1');
+  it('deve atualizar um cliente', async () => {
+    const dto: UpdateClientDto = { nome: 'Pedro' } as any;
+    const req = { user: { sub: 1 } } as any;
 
+    const result = await controller.updateDriver('1', dto, req);
     expect(result).toEqual({
-      user: { id: '1' },
-      message: 'Client deleted with success!'
+      client: { id: '1', nome: 'Pedro' },
+      message: 'Driver updated with success!',
     });
-    expect(mockService.deleteClient).toHaveBeenCalledWith('1');
+    expect(service.updateClient).toHaveBeenCalledWith('1', dto, 1);
+  });
+
+  it('deve deletar um cliente', async () => {
+    const req = { user: { sub: 1 } } as any;
+
+    const result = await controller.deleteDriver('1', req);
+    expect(result).toEqual({
+      client: { id: '1', deleted: true },
+      message: 'Driver deleted with success!',
+    });
+    expect(service.deleteClient).toHaveBeenCalledWith('1', 1);
   });
 });

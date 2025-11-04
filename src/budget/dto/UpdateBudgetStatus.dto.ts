@@ -1,5 +1,5 @@
 import { IsEnum } from 'class-validator';
-import { BudgetStatus } from 'src/enums/BudgetStatus';
+import { BudgetStatus } from '../../enums/BudgetStatus';
 
 export class UpdateBudgetStatusDto {
   @IsEnum(BudgetStatus)

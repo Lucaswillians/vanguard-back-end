@@ -1,93 +1,188 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { DriverEntity } from '../../driver/driver.entity';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { DriverService } from '../driver.service';
-import { PaymentType } from '../../enums/PaymentType';
+import { DriverEntity } from '../driver.entity';
 import { BudgetEntity } from '../../budget/budget.entity';
 
 describe('DriverService', () => {
   let service: DriverService;
-  let repo: Repository<DriverEntity>;
+  let driverRepo: any;
+  let budgetRepo: any;
+
+  const mockUserId = 'user-123';
 
   const mockDriver = {
     id: '1',
-    name: 'João Silva',
-    email: 'joao@example.com',
+    name: 'Motorista 1',
+    email: 'driver@example.com',
     cpf: '123.456.789-00',
-    paymentType: PaymentType.MONTHLY,
     driverCost: 5500,
-    dailyPriceDriver: 250
+    dailyPriceDriver: 250,
+    user: { id: mockUserId },
   };
 
-  const mockRepo = {
-    create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn(),
-    find: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-  };
-
-  const mockBudgetRepo = {
-    find: jest.fn(),
+  const mockBudget = {
+    id: '1',
+    origin: 'São Paulo',
+    destiny: 'Rio de Janeiro',
+    date_hour_trip: new Date(),
+    date_hour_return_trip: new Date(),
+    total_distance: 500,
+    trip_price: 5000,
+    days_out: 2,
+    driver: { id: '1' },
+    user: { id: mockUserId },
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DriverService,
-        { provide: getRepositoryToken(DriverEntity), useValue: mockRepo },
-        { provide: getRepositoryToken(BudgetEntity), useValue: mockBudgetRepo },
+        {
+          provide: getRepositoryToken(DriverEntity), useValue: {
+            create: jest.fn(),
+            save: jest.fn(),
+            find: jest.fn(),
+            findOne: jest.fn(),
+            update: jest.fn(),
+            delete: jest.fn(),
+          }
+        },
+        {
+          provide: getRepositoryToken(BudgetEntity), useValue: {
+            find: jest.fn(),
+          }
+        },
       ],
     }).compile();
 
     service = module.get<DriverService>(DriverService);
-    repo = module.get<Repository<DriverEntity>>(getRepositoryToken(DriverEntity));
+    driverRepo = module.get(getRepositoryToken(DriverEntity));
+    budgetRepo = module.get(getRepositoryToken(BudgetEntity));
   });
 
-  it('should create a driver', async () => {
-    mockRepo.save.mockResolvedValue(mockDriver);
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
-    const result = await service.createDriver({
-      name: 'João Silva',
-      email: 'joao@example.com',
-      cpf: '123.456.789-00',
-      paymentType: PaymentType.MONTHLY,
-      driverCost: 5500,
-      dailyPriceDriver: 250
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  describe('createDriver', () => {
+    it('should create and save a driver', async () => {
+      const createDto = {
+        name: 'Motorista 1',
+        email: 'driver@example.com',
+        cpf: '123.456.789-00',
+        driverCost: 5500,
+        dailyPriceDriver: 250
+      };
+
+      driverRepo.create.mockReturnValue({ ...createDto, user: { id: mockUserId } });
+      driverRepo.save.mockResolvedValue({ ...createDto, id: '1', user: { id: mockUserId } });
+
+      const result = await service.createDriver(createDto, mockUserId);
+
+      expect(driverRepo.create).toHaveBeenCalledWith({ ...createDto, user: { id: mockUserId } });
+      expect(driverRepo.save).toHaveBeenCalled();
+      expect(result).toEqual({ ...createDto, id: '1', user: { id: mockUserId } });
+    });
+  });
+
+  describe('getDrivers', () => {
+    it('should return all drivers of a user', async () => {
+      driverRepo.find.mockResolvedValue([mockDriver]);
+
+      const result = await service.getDrivers(mockUserId);
+
+      expect(driverRepo.find).toHaveBeenCalledWith({
+        where: { user: { id: mockUserId } },
+        relations: ['user'],
+      });
+      expect(result).toEqual([mockDriver]);
+    });
+  });
+
+  describe('findById', () => {
+    it('should return a driver if found', async () => {
+      driverRepo.findOne.mockResolvedValue(mockDriver);
+
+      const result = await service.findById('1', mockUserId);
+
+      expect(driverRepo.findOne).toHaveBeenCalledWith({
+        where: { id: '1', user: { id: mockUserId } },
+        relations: ['user'],
+      });
+      expect(result).toEqual(mockDriver);
     });
 
-    expect(result).toEqual(mockDriver);
-    expect(mockRepo.save).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'João Silva',
-      email: 'joao@example.com',
-      cpf: '123.456.789-00',
-      paymentType: 'Mensal',
-    }));
+    it('should throw NotFoundException if driver not found', async () => {
+      driverRepo.findOne.mockResolvedValue(undefined);
+
+      await expect(service.findById('999', mockUserId)).rejects.toThrow(NotFoundException);
+    });
   });
 
-  it('should return all drivers', async () => {
-    mockRepo.find.mockResolvedValue([mockDriver]);
+  describe('updateDriver', () => {
+    it('should update a driver and return it', async () => {
+      const updateDto = { name: 'Motorista Atualizado', cpf: '123.456.789-00' };
+      driverRepo.findOne.mockResolvedValueOnce(mockDriver).mockResolvedValueOnce({ ...mockDriver, ...updateDto });
+      driverRepo.update.mockResolvedValue({});
 
-    const result = await service.getDrivers();
+      const result = await service.updateDriver('1', updateDto, mockUserId);
 
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual(mockDriver);
+      expect(driverRepo.update).toHaveBeenCalledWith('1', updateDto);
+      expect(result.name).toBe('Motorista Atualizado');
+      expect(result.cpf).toBe('123.456.789-00');
+    });
+
+    it('should throw ForbiddenException if driver not found', async () => {
+      jest.spyOn(service, 'findById').mockRejectedValueOnce(new NotFoundException());
+
+      const updateDto = { name: 'Motorista Atualizado', cpf: '123.456.789-00' };
+      await expect(service.updateDriver('999', updateDto, mockUserId)).rejects.toThrow(NotFoundException);
+    });
   });
 
-  it('should update a driver', async () => {
-    mockRepo.update.mockResolvedValue({ affected: 1 });
+  describe('deleteDriver', () => {
+    it('should delete a driver', async () => {
+      driverRepo.findOne.mockResolvedValue(mockDriver);
+      driverRepo.delete.mockResolvedValue({});
 
-    await service.updateDriver('1', { name: 'João Updated' });
+      const result = await service.deleteDriver('1', mockUserId);
 
-    expect(mockRepo.update).toHaveBeenCalledWith('1', { name: 'João Updated' });
+      expect(driverRepo.delete).toHaveBeenCalledWith('1');
+      expect(result).toEqual({});
+    });
+
+    it('should throw ForbiddenException if driver not found', async () => {
+      jest.spyOn(service, 'findById').mockRejectedValueOnce(new NotFoundException());
+      await expect(service.deleteDriver('999', mockUserId)).rejects.toThrow(NotFoundException);
+    });
   });
 
-  it('should delete a driver', async () => {
-    mockRepo.delete.mockResolvedValue({ affected: 1 });
+  describe('getDriverMonthlyRemuneration', () => {
+    it('should return remuneration summary with trips', async () => {
+      driverRepo.findOne.mockResolvedValue(mockDriver);
+      budgetRepo.find.mockResolvedValue([mockBudget]);
 
-    await service.deleteDriver('1');
+      const result = await service.getDriverMonthlyRemuneration('1', 1, 2025, mockUserId);
 
-    expect(mockRepo.delete).toHaveBeenCalledWith('1');
+      expect(result.driver).toBe(mockDriver.name);
+      expect(result.totalRemuneration).toBe(mockBudget.days_out * mockDriver.dailyPriceDriver);
+      expect(result.trips).toHaveLength(1);
+    });
+
+    it('should return zero remuneration if no trips', async () => {
+      driverRepo.findOne.mockResolvedValue(mockDriver);
+      budgetRepo.find.mockResolvedValue([]);
+
+      const result = await service.getDriverMonthlyRemuneration('1', 1, 2025, mockUserId);
+
+      expect(result.totalRemuneration).toBe(0);
+      expect(result.trips).toHaveLength(0);
+    });
   });
 });

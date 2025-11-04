@@ -14,6 +14,7 @@ import { GetBudgetDto } from './dto/GetBudget.dto';
 import { UpdateBudgetDto } from './dto/UpdateBudget.dto';
 import { GetTripDetails } from './dto/GetTripDetails.dto';
 import { UpdateBudgetStatusDto } from './dto/UpdateBudgetStatus.dto';
+import { calculateBudgetValues } from '../utils/budgetCalculator.util';
 
 @Injectable()
 export class BudgetService {
@@ -72,22 +73,24 @@ export class BudgetService {
     const totalDistance = distance * 2;
 
     const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
-    const { driverCost, dailyPriceDriver, email: driverEmail, name: driverName } =
-      await this.driverApiService.findById(driver_id, userId);
+    const { driverCost, dailyPriceDriver } = await this.driverApiService.findById(driver_id, userId);
     const dieselPrice = await this.gasApiService.getDieselSC();
 
-    const litersConsumed = totalDistance / consumption;
-    const gasCost = litersConsumed * dieselPrice.preco;
-    const custoMotoristaMensal = (driverCost / 15) * numMotoristas;
-    const custoDiaria = dailyPriceDriver * diasFora;
-
-    const subtotal =
-      gasCost + custoMotoristaMensal + custoDiaria + pedagio + fixed_cost! + lucroDesejado + custoExtra;
-
-    const imposto = subtotal * (impostoPercent / 100);
-    const valorTotal = subtotal + imposto;
-    const percentualCombustivel = (gasCost / valorTotal) * 100;
-    const houveLucro = percentualCombustivel < 30;
+    // 💡 Usa o util para centralizar cálculos
+    const calc = calculateBudgetValues({
+      totalDistance,
+      consumption,
+      dieselPrice: dieselPrice.preco,
+      driverCost,
+      dailyPriceDriver,
+      numMotoristas,
+      diasFora,
+      pedagio,
+      fixed_cost: fixed_cost!,
+      lucroDesejado,
+      impostoPercent,
+      custoExtra,
+    });
 
     const budget = this.budgetRepository.create({
       origin: origem,
@@ -95,23 +98,24 @@ export class BudgetService {
       date_hour_trip: dataIda,
       date_hour_return_trip: dataVolta,
       total_distance: totalDistance,
-      trip_price: valorTotal,
+      trip_price: calc.valorTotal,
       desired_profit: lucroDesejado,
       days_out: diasFora,
       toll: pedagio,
       fixed_cost,
       extra_cost: custoExtra,
       number_of_drivers: numMotoristas,
-      houveLucro,
+      houveLucro: calc.houveLucro,
       status: BudgetStatus.PENDING,
       cliente: { id: cliente_id },
       driver: { id: driver_id },
       car: { id: car_id },
-      user: { id: userId }, 
+      user: { id: userId },
     });
 
     const savedBudget = await this.budgetRepository.save(budget);
 
+    // Formatação de datas
     const dataIdaFormatada = dataIda.toLocaleDateString('pt-BR');
     const horaIdaFormatada = dataIda.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const dataVoltaFormatada = dataVolta.toLocaleDateString('pt-BR');
@@ -123,15 +127,8 @@ export class BudgetService {
       hora_ida: horaIdaFormatada,
       data_retorno: dataVoltaFormatada,
       hora_retorno: horaVoltaFormatada,
-      litersConsumed,
-      gasCost,
-      custoMotoristaMensal,
-      custoDiaria,
-      subtotal,
-      imposto,
-      valorTotal,
-      percentualCombustivel: percentualCombustivel.toFixed(2) + '%',
-      houveLucro,
+      ...calc,
+      percentualCombustivel: calc.percentualCombustivel.toFixed(2) + '%',
       dieselPrice: dieselPrice.preco,
     };
   }
@@ -190,7 +187,6 @@ export class BudgetService {
     return budgetList;
   }
 
-
   async updateBudget(id: string, dto: UpdateBudgetDto, userId: string) {
     const budget = await this.budgetRepository.findOne({
       where: { id, user: { id: userId } },
@@ -201,13 +197,11 @@ export class BudgetService {
       throw new NotFoundException('Orçamento não encontrado ou não pertence a este usuário');
     }
 
-    // === Captura dos valores anteriores (para comparação) ===
     const oldOrigem = budget.origin;
     const oldDestino = budget.destiny;
     const oldDataIda = budget.date_hour_trip;
     const oldDataVolta = budget.date_hour_return_trip;
 
-    // === Novos valores com fallback ===
     const origem = dto.origem ?? budget.origin;
     const destino = dto.destino ?? budget.destiny;
     const data_hora_viagem = dto.data_hora_viagem ?? budget.date_hour_trip;
@@ -222,7 +216,6 @@ export class BudgetService {
     const cliente_id = dto.cliente_id ?? budget.cliente.id;
     const status = dto.status ?? budget.status;
 
-    // === Cálculos ===
     const dataIda = new Date(data_hora_viagem);
     const dataVolta = new Date(data_hora_viagem_retorno);
     const diffTime = Math.abs(dataVolta.getTime() - dataIda.getTime());
@@ -232,43 +225,48 @@ export class BudgetService {
     const totalDistance = distance * 2;
 
     const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
-    const { driverCost, dailyPriceDriver, email: driverEmail, name: driverName } = await this.driverApiService.findById(driver_id, userId);
+    const { driverCost, dailyPriceDriver, email: driverEmail, name: driverName } =
+      await this.driverApiService.findById(driver_id, userId);
     const dieselPrice = await this.gasApiService.getDieselSC();
 
-    const litersConsumed = totalDistance / consumption;
-    const gasCost = litersConsumed * dieselPrice.preco;
-    const custoMotoristaMensal = (driverCost / 15) * numMotoristas;
-    const custoDiaria = dailyPriceDriver * diasFora;
+    const calc = calculateBudgetValues({
+      totalDistance,
+      consumption,
+      dieselPrice: dieselPrice.preco,
+      driverCost,
+      dailyPriceDriver,
+      numMotoristas,
+      diasFora,
+      pedagio,
+      fixed_cost: fixed_cost!,
+      lucroDesejado,
+      impostoPercent,
+      custoExtra,
+    });
 
-    const subtotal = gasCost + custoMotoristaMensal + custoDiaria + pedagio + fixed_cost! + lucroDesejado + custoExtra;
-    const imposto = subtotal * (impostoPercent / 100);
-    const valorTotal = subtotal + imposto;
-    const percentualCombustivel = (gasCost / valorTotal) * 100;
-    const houveLucro = percentualCombustivel < 30;
-
-    // === Atualiza os campos ===
-    budget.origin = origem;
-    budget.destiny = destino;
-    budget.date_hour_trip = dataIda;
-    budget.date_hour_return_trip = dataVolta;
-    budget.total_distance = totalDistance;
-    budget.trip_price = valorTotal;
-    budget.desired_profit = lucroDesejado;
-    budget.days_out = diasFora;
-    budget.toll = pedagio;
-    budget.fixed_cost = fixed_cost;
-    budget.extra_cost = custoExtra;
-    budget.number_of_drivers = numMotoristas;
-    budget.houveLucro = houveLucro;
-    budget.status = status;
-    budget.car = { id: car_id } as any;
-    budget.driver = { id: driver_id } as any;
-    budget.cliente = { id: cliente_id } as any;
-    budget.user = { id: userId } as any; 
+    Object.assign(budget, {
+      origin: origem,
+      destiny: destino,
+      date_hour_trip: dataIda,
+      date_hour_return_trip: dataVolta,
+      total_distance: totalDistance,
+      trip_price: calc.valorTotal,
+      desired_profit: lucroDesejado,
+      days_out: diasFora,
+      toll: pedagio,
+      fixed_cost,
+      extra_cost: custoExtra,
+      number_of_drivers: numMotoristas,
+      houveLucro: calc.houveLucro,
+      status,
+      car: { id: car_id } as any,
+      driver: { id: driver_id } as any,
+      cliente: { id: cliente_id } as any,
+      user: { id: userId } as any,
+    });
 
     const updatedBudget = await this.budgetRepository.save(budget);
 
-    // === Verifica se houve mudança em campos relevantes ===
     const origemAlterada = oldOrigem !== origem;
     const destinoAlterado = oldDestino !== destino;
     const dataAlterada =
@@ -283,23 +281,22 @@ export class BudgetService {
 
       const emailSubject = 'Atualização na sua viagem';
       const emailText = `
-    Olá ${driverName},
+      Olá ${driverName},
 
-    Houve uma atualização nos detalhes da sua viagem.
+      Houve uma atualização nos detalhes da sua viagem.
 
-    Origem: ${origem}
-    Destino: ${destino}
-    Data e hora de ida: ${dataIdaFormatada} às ${horaIdaFormatada}
-    Data e hora de retorno: ${dataVoltaFormatada} às ${horaVoltaFormatada}
-    Número de dias fora: ${diasFora}
+      Origem: ${origem}
+      Destino: ${destino}
+      Data e hora de ida: ${dataIdaFormatada} às ${horaIdaFormatada}
+      Data e hora de retorno: ${dataVoltaFormatada} às ${horaVoltaFormatada}
+      Número de dias fora: ${diasFora}
 
-    Por favor, verifique os novos detalhes.
-    `;
+      Por favor, verifique os novos detalhes.
+      `;
 
       await this.emailSender.sendEmail(driverEmail, emailSubject, emailText);
     }
 
-    // === Retorno formatado ===
     const dataIdaFormatada = dataIda.toLocaleDateString('pt-BR');
     const horaIdaFormatada = dataIda.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const dataVoltaFormatada = dataVolta.toLocaleDateString('pt-BR');
@@ -311,15 +308,8 @@ export class BudgetService {
       hora_ida: horaIdaFormatada,
       data_retorno: dataVoltaFormatada,
       hora_retorno: horaVoltaFormatada,
-      litersConsumed,
-      gasCost,
-      custoMotoristaMensal,
-      custoDiaria,
-      subtotal,
-      imposto,
-      valorTotal,
-      percentualCombustivel: percentualCombustivel.toFixed(2) + '%',
-      houveLucro,
+      ...calc,
+      percentualCombustivel: calc.percentualCombustivel.toFixed(2) + '%',
       dieselPrice: dieselPrice.preco,
     };
   }
@@ -367,78 +357,78 @@ export class BudgetService {
   }
 
 
-  async createBudgetMock() {
-    // ==== MOCKS (valores simulados) ====
-    const quilometragemTotal = 885.5652;        // ida e volta (km)
+  // async createBudgetMock() {
+  //   // ==== MOCKS (valores simulados) ====
+  //   const quilometragemTotal = 885.5652;        // ida e volta (km)
 
-    // isso vem de car
-    const mediaKmPorLitro = 2.5;            // média de consumo do ônibus
+  //   // isso vem de car
+  //   const mediaKmPorLitro = 2.5;            // média de consumo do ônibus
 
-    // isso vem da api de diesel 
-    const precoDiesel = 6.13;               // valor atual do diesel (R$)
+  //   // isso vem da api de diesel 
+  //   const precoDiesel = 6.13;               // valor atual do diesel (R$)
 
-    // isso vem de driver 
-    const salarioMotorista = 5500;          // salário mensal (R$)
+  //   // isso vem de driver 
+  //   const salarioMotorista = 5500;          // salário mensal (R$)
 
-    // isso vem de driver
-    const diariaMotorista = 250;            // valor da diária (R$)
+  //   // isso vem de driver
+  //   const diariaMotorista = 250;            // valor da diária (R$)
 
 
-    const diasFora = 4;                     // quantidade de dias fora
-    const pedagio = 225.60;                 // valor total de pedágios (R$)
-    const custoFixo = 253.9;               // custo fixo para manter o carro (R$)
-    const lucroDesejado = 4000;             // lucro que deseja obter na viagem (R$)
-    const impostoPercent = 0.09;            // 9% de imposto
-    const numMotoristas = 2;                // número de motoristas na viagem
-    const custoExtra = 500;
+  //   const diasFora = 4;                     // quantidade de dias fora
+  //   const pedagio = 225.60;                 // valor total de pedágios (R$)
+  //   const custoFixo = 253.9;               // custo fixo para manter o carro (R$)
+  //   const lucroDesejado = 4000;             // lucro que deseja obter na viagem (R$)
+  //   const impostoPercent = 0.09;            // 9% de imposto
+  //   const numMotoristas = 2;                // número de motoristas na viagem
+  //   const custoExtra = 500;
 
-    // ==== 1. Quilometragem total e média ====
-    const litrosConsumidos = quilometragemTotal / mediaKmPorLitro;
+  //   // ==== 1. Quilometragem total e média ====
+  //   const litrosConsumidos = quilometragemTotal / mediaKmPorLitro;
 
-    // ==== 2. Custo com combustível ====
-    const custoCombustivel = litrosConsumidos * precoDiesel;
+  //   // ==== 2. Custo com combustível ====
+  //   const custoCombustivel = litrosConsumidos * precoDiesel;
 
-    // ==== 3. Custo do motorista (salário dividido por 15) * número de motoristas ====
-    const custoMotoristaMensal = (salarioMotorista / 15) * numMotoristas;
+  //   // ==== 3. Custo do motorista (salário dividido por 15) * número de motoristas ====
+  //   const custoMotoristaMensal = (salarioMotorista / 15) * numMotoristas;
 
-    // ==== 4. Diária do motorista * número de motoristas ====
-    const custoDiaria = diariaMotorista * diasFora;
+  //   // ==== 4. Diária do motorista * número de motoristas ====
+  //   const custoDiaria = diariaMotorista * diasFora;
 
-    // ==== 8. Soma de todos os custos + lucro ====
-    const subtotal = custoCombustivel + custoMotoristaMensal + custoDiaria + pedagio + custoFixo + lucroDesejado + custoExtra;
+  //   // ==== 8. Soma de todos os custos + lucro ====
+  //   const subtotal = custoCombustivel + custoMotoristaMensal + custoDiaria + pedagio + custoFixo + lucroDesejado + custoExtra;
 
-    // ==== 9. Imposto (9%) ====
-    const imposto = subtotal * impostoPercent;
+  //   // ==== 9. Imposto (9%) ====
+  //   const imposto = subtotal * impostoPercent;
 
-    // ==== 10. Valor total da viagem ====
-    const valorTotal = subtotal + imposto;
+  //   // ==== 10. Valor total da viagem ====
+  //   const valorTotal = subtotal + imposto;
 
-    // ==== 13. Verificação de lucratividade ====
-    const percentualCombustivel = (custoCombustivel / valorTotal) * 100;
-    const houveLucro = percentualCombustivel < 30;
+  //   // ==== 13. Verificação de lucratividade ====
+  //   const percentualCombustivel = (custoCombustivel / valorTotal) * 100;
+  //   const houveLucro = percentualCombustivel < 30;
 
-    // ==== Resultado final ====
-    const resultado = {
-      quilometragemTotal,
-      mediaKmPorLitro,
-      precoDiesel,
-      litrosConsumidos,
-      custoCombustivel,
-      custoMotoristaMensal,
-      custoDiaria,
-      pedagio,
-      custoFixo,
-      lucroDesejado,
-      numMotoristas,
-      subtotal,
-      impostoPercent: impostoPercent * 100,
-      imposto,
-      valorTotal,
-      percentualCombustivel: percentualCombustivel.toFixed(2) + '%',
-      houveLucro,
-    };
+  //   // ==== Resultado final ====
+  //   const resultado = {
+  //     quilometragemTotal,
+  //     mediaKmPorLitro,
+  //     precoDiesel,
+  //     litrosConsumidos,
+  //     custoCombustivel,
+  //     custoMotoristaMensal,
+  //     custoDiaria,
+  //     pedagio,
+  //     custoFixo,
+  //     lucroDesejado,
+  //     numMotoristas,
+  //     subtotal,
+  //     impostoPercent: impostoPercent * 100,
+  //     imposto,
+  //     valorTotal,
+  //     percentualCombustivel: percentualCombustivel.toFixed(2) + '%',
+  //     houveLucro,
+  //   };
 
-    console.table(resultado);
-    return resultado;
-  }
+  //   console.table(resultado);
+  //   return resultado;
+  // }
 }

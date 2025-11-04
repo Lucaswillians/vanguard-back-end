@@ -6,13 +6,12 @@ import { AuthService } from "../auth/auth.service";
 import { GetUserDto } from "./dto/GetUset.dto";
 import { UpdateUserDto } from "./dto/UpdateUser.dto";
 import { CreateUserDto } from "./dto/CreateUser.dto";
-import { EmailSenderService } from "src/email-sender/emailSender.serivce";
+import { EmailSenderService } from "../email-sender/emailSender.serivce";
 import { PasswordResetCodeEntity } from "./passwordResetCode/passwordResetCode.entity";
 import { randomBytes } from "crypto";
 
 @Injectable()
 export class UserService {
-  // tempo de vida do código em minutos
   private static readonly RESET_CODE_TTL_MIN = 15;
 
   constructor(
