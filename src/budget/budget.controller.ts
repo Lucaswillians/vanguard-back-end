@@ -9,6 +9,7 @@ import {
   Req,
   UseGuards,
   Patch,
+  Delete,
 } from '@nestjs/common';
 import { BudgetService } from './budget.service';
 import { CreateBudgetDto } from './dto/CreateBudget.dto';
@@ -81,6 +82,12 @@ export class BudgetController {
     @Req() req,
   ) {
     return this.budgetService.updateBudgetStatus(id, dto, req.user.id);
+  }
+
+  @Delete(':id')
+  async deleteBudget(@Param('id') id: string, @Req() req) {
+    const userId = req.user.id;
+    return this.budgetService.deleteBudget(id, userId);
   }
 
 }

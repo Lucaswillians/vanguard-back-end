@@ -407,6 +407,31 @@ export class BudgetService {
       throw new BadRequestException(`Erro ao atualizar status do orçamento: ${err.message}`);
     }
   }
+
+  async deleteBudget(id: string, userId: string) {
+    this.logger.log(`Tentando deletar orçamento ID ${id} do usuário ${userId}`);
+
+    const budget = await this.budgetRepository.findOne({
+      where: { id, user: { id: userId } },
+      relations: ['cliente', 'driver', 'car', 'user'],
+    });
+
+    if (!budget) {
+      this.logger.warn(`Orçamento ID ${id} não encontrado para exclusão`);
+      throw new NotFoundException('Orçamento não encontrado ou não pertence a este usuário.');
+    }
+
+    try {
+      await this.budgetRepository.remove(budget);
+      this.logger.log(`Orçamento ID ${id} deletado com sucesso`);
+      return { message: 'Orçamento deletado com sucesso' };
+    } 
+    catch (err) {
+      this.logger.error(`Erro ao deletar orçamento ID ${id}`, err.stack);
+      throw new BadRequestException(`Erro ao deletar orçamento: ${err.message}`);
+    }
+  }
+
 }
 
 
