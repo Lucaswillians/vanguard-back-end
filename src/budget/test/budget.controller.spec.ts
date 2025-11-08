@@ -42,12 +42,6 @@ describe('BudgetController', () => {
     expect(controller).toBeDefined();
   });
 
-  // it('deve retornar um orçamento mock', async () => {
-  //   const result = await controller.getMockBudget();
-  //   expect(result).toEqual({ mock: true });
-  //   expect(service.createBudgetMock).toHaveBeenCalled();
-  // });
-
   it('deve criar um novo orçamento', async () => {
     const dto: CreateBudgetDto = { nome_cliente: 'João', origem: 'SP', destino: 'RJ' } as any;
     const req = { user: { sub: 1 } };
