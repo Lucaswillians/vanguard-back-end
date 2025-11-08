@@ -3,7 +3,6 @@ import { AuthService } from "./auth.service";
 import { RateLimiterService } from "./rate-limiter/rateLimiter.service";
 import { CreateUserDto } from "../User/dto/CreateUser.dto";
 import { Request, Response } from "express";
-import { access } from "fs";
 
 @Controller('/auth')
 export class AuthController {

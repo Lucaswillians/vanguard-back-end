@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { ClientService } from '../client.service';
 import { ClientEntity } from '../client.entity';
 import { CreateClientDto } from '../dto/CreateClient.dto';

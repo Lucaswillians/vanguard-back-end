@@ -5,7 +5,6 @@ import { DriverEntity } from './driver.entity';
 import { CreateDriverDto } from './dto/CreateDriver.dto';
 import { UpdateDriverDto } from './dto/UpdateDriver.dto';
 import { BudgetEntity } from '../budget/budget.entity';
-import { UserEntity } from '../User/user.entity';
 
 @Injectable()
 export class DriverService {

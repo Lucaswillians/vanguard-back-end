@@ -25,13 +25,6 @@ export class BudgetController {
   @Inject()
   private readonly budgetService: BudgetService;
 
-
-  // @Get('mock')
-  // async getMockBudget() {
-  //   return this.budgetService.createBudgetMock();
-  // }
-
-
   @Post()
   async create(
     @Body() dto: CreateBudgetDto,
@@ -89,5 +82,4 @@ export class BudgetController {
     const userId = req.user.id;
     return this.budgetService.deleteBudget(id, userId);
   }
-
 }

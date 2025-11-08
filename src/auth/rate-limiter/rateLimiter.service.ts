@@ -6,9 +6,9 @@ import { LoginAttempt } from './loginAttemp.entity';
 
 @Injectable()
 export class RateLimiterService {
-  private MAX_ATTEMPTS = 5;
-  private BLOCK_TIME = 0.5;
-  private CHECK_WINDOW = 0.0833;
+  private readonly MAX_ATTEMPTS = 5;
+  private readonly BLOCK_TIME = 0.5;
+  private readonly CHECK_WINDOW = 0.0833;
 
   constructor(
     @InjectRepository(LoginAttempt)

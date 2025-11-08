@@ -9,7 +9,7 @@ import { AuthGuard } from "../auth/auth.guard";
 @Controller('/client')
 export class ClientController {
   @Inject()
-  private clientService: ClientService;
+  private readonly clientService: ClientService;
 
   private formatResponse(client: any, message: string) {
     return { client, message };

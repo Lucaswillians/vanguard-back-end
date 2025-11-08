@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { CarService } from '../car.service';
 import { CarEntity } from '../car.entity';
 import { CreateCarDto } from '../dto/CreateCar.dto';

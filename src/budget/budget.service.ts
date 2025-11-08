@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, MoreThanOrEqual, Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { BudgetEntity } from './budget.entity';
 import { GeocodeApiService } from '../geocodeApi/geocodeApi.service';
 import { GasApiService } from '../gasApi/gasApi.service';
@@ -180,7 +180,6 @@ export class BudgetService {
       this.logger.log(`Total de orçamentos encontrados: ${savedBudget.length}`);
 
       return savedBudget.map((budget) => {
-        const driverNames = budget.driver?.map((d) => d.name) || [];
         const driverIds = budget.driver?.map((d) => d.id) || [];
 
         return new GetBudgetDto(
@@ -476,78 +475,3 @@ export class BudgetService {
   }
 }
 
-
-// async createBudgetMock() {
-//   // ==== MOCKS (valores simulados) ====
-//   const quilometragemTotal = 885.5652;        // ida e volta (km)
-
-//   // isso vem de car
-//   const mediaKmPorLitro = 2.5;            // média de consumo do ônibus
-
-//   // isso vem da api de diesel
-//   const precoDiesel = 6.13;               // valor atual do diesel (R$)
-
-//   // isso vem de driver
-//   const salarioMotorista = 5500;          // salário mensal (R$)
-
-//   // isso vem de driver
-//   const diariaMotorista = 250;            // valor da diária (R$)
-
-
-//   const diasFora = 4;                     // quantidade de dias fora
-//   const pedagio = 225.60;                 // valor total de pedágios (R$)
-//   const custoFixo = 253.9;               // custo fixo para manter o carro (R$)
-//   const lucroDesejado = 4000;             // lucro que deseja obter na viagem (R$)
-//   const impostoPercent = 0.09;            // 9% de imposto
-//   const numMotoristas = 2;                // número de motoristas na viagem
-//   const custoExtra = 500;
-
-//   // ==== 1. Quilometragem total e média ====
-//   const litrosConsumidos = quilometragemTotal / mediaKmPorLitro;
-
-//   // ==== 2. Custo com combustível ====
-//   const custoCombustivel = litrosConsumidos * precoDiesel;
-
-//   // ==== 3. Custo do motorista (salário dividido por 15) * número de motoristas ====
-//   const custoMotoristaMensal = (salarioMotorista / 15) * numMotoristas;
-
-//   // ==== 4. Diária do motorista * número de motoristas ====
-//   const custoDiaria = diariaMotorista * diasFora;
-
-//   // ==== 8. Soma de todos os custos + lucro ====
-//   const subtotal = custoCombustivel + custoMotoristaMensal + custoDiaria + pedagio + custoFixo + lucroDesejado + custoExtra;
-
-//   // ==== 9. Imposto (9%) ====
-//   const imposto = subtotal * impostoPercent;
-
-//   // ==== 10. Valor total da viagem ====
-//   const valorTotal = subtotal + imposto;
-
-//   // ==== 13. Verificação de lucratividade ====
-//   const percentualCombustivel = (custoCombustivel / valorTotal) * 100;
-//   const houveLucro = percentualCombustivel < 30;
-
-//   // ==== Resultado final ====
-//   const resultado = {
-//     quilometragemTotal,
-//     mediaKmPorLitro,
-//     precoDiesel,
-//     litrosConsumidos,
-//     custoCombustivel,
-//     custoMotoristaMensal,
-//     custoDiaria,
-//     pedagio,
-//     custoFixo,
-//     lucroDesejado,
-//     numMotoristas,
-//     subtotal,
-//     impostoPercent: impostoPercent * 100,
-//     imposto,
-//     valorTotal,
-//     percentualCombustivel: percentualCombustivel.toFixed(2) + '%',
-//     houveLucro,
-//   };
-
-//   console.table(resultado);
-//   return resultado;
-// }

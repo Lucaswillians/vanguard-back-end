@@ -7,7 +7,7 @@ export class EmailSenderService {
   private readonly logger = new Logger(EmailSenderService.name);
 
   @Inject()
-  private configService: ConfigService;
+  private readonly configService: ConfigService;
 
   async sendEmail(to: string, subject: string, body: string) {
     this.logger.log(`Preparando para enviar e-mail para: ${to} com assunto: "${subject}"`);

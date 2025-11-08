@@ -9,7 +9,7 @@ import { AuthGuard } from "../auth/auth.guard";
 @Controller('/car')
 export class CarController {
   @Inject()
-  private carService: CarService;
+  private readonly carService: CarService;
 
   private formatResponse(car: any, message: string) {
     return { car, message };
