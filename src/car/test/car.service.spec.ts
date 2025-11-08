@@ -83,9 +83,18 @@ describe('CarService', () => {
         where: { user: { id: mockUserId } },
         relations: ['user'],
       });
-      expect(result).toEqual([mockCar]);
+      expect(result).toEqual([
+        {
+          id: mockCar.id,
+          model: mockCar.model,
+          plate: mockCar.plate,
+          consumption: mockCar.consumption,
+          fixed_cost: mockCar.fixed_cost,
+        },
+      ]);
     });
   });
+
 
   describe('findById', () => {
     it('should return a car if found', async () => {

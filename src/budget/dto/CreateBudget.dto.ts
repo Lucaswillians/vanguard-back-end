@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Matches } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsDateString, IsEnum, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Matches } from 'class-validator';
 import { BudgetStatus } from '../../enums/BudgetStatus';
 
 export class CreateBudgetDto {
@@ -40,8 +40,10 @@ export class CreateBudgetDto {
   @IsInt()
   cliente_id: string;
 
-  @IsInt()
-  driver_id: string;
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsUUID('all', { each: true })
+  driver_id: string[];
 
   @IsInt()
   car_id: string;

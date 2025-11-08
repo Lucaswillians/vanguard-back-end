@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, ManyToOne, JoinColumn, ManyToMany, JoinTable } from 'typeorm';
 import { BudgetStatus } from '../enums/BudgetStatus';
 import { ClientEntity } from '../client/client.entity';
 import { DriverEntity } from '../driver/driver.entity';
@@ -68,15 +68,13 @@ export class BudgetEntity {
   @JoinColumn({ name: 'cliente_id' })
   cliente: ClientEntity;
 
-  @ManyToOne(() => DriverEntity, (driver) => driver.budgets, {
-    onDelete: 'CASCADE',
+  @ManyToMany(() => DriverEntity, (driver) => driver.budgets, { cascade: true })
+  @JoinTable({
+    name: 'budget_drivers',
+    joinColumn: { name: 'budget_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'driver_id', referencedColumnName: 'id' },
   })
-  @JoinColumn({ name: 'driver_id' })
-  driver: DriverEntity;
-
-  @Column({ name: 'driver_id' })
-  driver_id: string;
-
+  driver: DriverEntity[];
 
   @ManyToOne(() => CarEntity, (car) => car.budgets)
   @JoinColumn({ name: 'car_id' })

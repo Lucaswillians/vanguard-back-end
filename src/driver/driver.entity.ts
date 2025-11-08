@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, OneToMany, ManyToOne, Unique } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, OneToMany, ManyToOne, Unique, ManyToMany } from 'typeorm';
 import { BudgetEntity } from '../budget/budget.entity';
 import { UserEntity } from '../User/user.entity';
 
@@ -32,7 +32,7 @@ export class DriverEntity {
   @DeleteDateColumn({ name: 'deleted_at' })
   deletedAt: string;
 
-  @OneToMany(() => BudgetEntity, (budget) => budget.driver)
+  @ManyToMany(() => BudgetEntity, (budget) => budget.driver)
   budgets: BudgetEntity[];
 
   @ManyToOne(() => UserEntity, (user) => user.driver)

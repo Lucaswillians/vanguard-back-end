@@ -173,7 +173,7 @@ describe('UserService', () => {
       const result = await service.deleteUser(mockUserId);
 
       expect(userRepo.delete).toHaveBeenCalledWith(mockUserId);
-      expect(result).toEqual({ affected: 1 });
+      expect(result).toEqual({ message: 'Usuário deletado com sucesso' }); 
     });
   });
 

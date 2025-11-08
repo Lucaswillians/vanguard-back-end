@@ -154,7 +154,7 @@ describe('DriverService', () => {
       const result = await service.deleteDriver('1', mockUserId);
 
       expect(driverRepo.delete).toHaveBeenCalledWith('1');
-      expect(result).toEqual({});
+      expect(result).toEqual({ message: 'Motorista deletado com sucesso' }); // ✅ corrigido
     });
 
     it('should throw ForbiddenException if driver not found', async () => {
@@ -162,6 +162,7 @@ describe('DriverService', () => {
       await expect(service.deleteDriver('999', mockUserId)).rejects.toThrow(NotFoundException);
     });
   });
+
 
   describe('getDriverMonthlyRemuneration', () => {
     it('should return remuneration summary with trips', async () => {

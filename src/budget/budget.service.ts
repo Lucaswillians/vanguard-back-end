@@ -67,7 +67,6 @@ export class BudgetService {
       pedagio,
       lucroDesejado,
       impostoPercent,
-      numMotoristas,
       custoExtra,
       driver_id,
       car_id,
@@ -77,36 +76,47 @@ export class BudgetService {
     const dataIda = new Date(data_hora_viagem);
     const dataVolta = new Date(data_hora_viagem_retorno);
 
-    const conflictingBudget = await this.budgetRepository.findOne({
-      where: {
-        driver: { id: driver_id },
-        date_hour_trip: LessThanOrEqual(dataVolta),
-        date_hour_return_trip: MoreThanOrEqual(dataIda),
-      },
-    });
+    const conflictingBudget = await this.budgetRepository
+      .createQueryBuilder('budget')
+      .leftJoin('budget.driver', 'driver')
+      .where('driver.id IN (:...driverIds)', { driverIds: driver_id })
+      .andWhere('budget.date_hour_trip <= :dataVolta', { dataVolta })
+      .andWhere('budget.date_hour_return_trip >= :dataIda', { dataIda })
+      .getOne();
 
     if (conflictingBudget) {
-      this.logger.warn(`Conflito de viagem para motorista ${driver_id} entre ${dataIda} e ${dataVolta}`);
-      throw new ConflictException('O motorista selecionado já possui outra viagem nesse período.');
+      this.logger.warn(
+        `Conflito de viagem para um ou mais motoristas entre ${dataIda} e ${dataVolta}`,
+      );
+      throw new ConflictException(
+        'Um ou mais motoristas selecionados já possuem outra viagem nesse período.',
+      );
     }
 
     try {
       const diffTime = Math.abs(dataVolta.getTime() - dataIda.getTime());
       const diasFora = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
       const { distance } = await this.calculateDistance(origem, destino);
       const totalDistance = distance * 2;
-
       const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
-      const { driverCost, dailyPriceDriver } = await this.driverApiService.findById(driver_id, userId);
+
+      const driversData = await Promise.all(
+        driver_id.map((id) => this.driverApiService.findById(id, userId)),
+      );
+
+      const totalDriverCost = driversData.reduce((acc, d) => acc + d.driverCost, 0);
+      const totalDailyPriceDriver = driversData.reduce((acc, d) => acc + d.dailyPriceDriver, 0);
+
+      const numMotoristas = driver_id.length;
+
       const dieselPrice = await this.gasApiService.getDieselSC();
 
       const calc = calculateBudgetValues({
         totalDistance,
         consumption,
         dieselPrice: dieselPrice.preco,
-        driverCost,
-        dailyPriceDriver,
+        driverCost: totalDriverCost,
+        dailyPriceDriver: totalDailyPriceDriver,
         numMotoristas,
         diasFora,
         pedagio,
@@ -132,7 +142,7 @@ export class BudgetService {
         houveLucro: calc.houveLucro,
         status: BudgetStatus.PENDING,
         cliente: { id: cliente_id },
-        driver: { id: driver_id },
+        driver: driver_id.map((id) => ({ id })), 
         car: { id: car_id },
         user: { id: userId },
       });
@@ -150,39 +160,44 @@ export class BudgetService {
         percentualCombustivel: calc.percentualCombustivel.toFixed(2) + '%',
         dieselPrice: dieselPrice.preco,
       };
-    } 
-    catch (err) {
+    } catch (err) {
       this.logger.error(`Erro ao criar orçamento para usuário ${userId}`, err.stack);
       throw new BadRequestException(`Erro ao criar orçamento: ${err.message}`);
     }
   }
 
+
   async getAllBudgets(userId: string) {
     this.logger.log(`Buscando todos os orçamentos do usuário ${userId}`);
+
     try {
       const savedBudget = await this.budgetRepository.find({
         where: { user: { id: userId } },
         relations: ['cliente', 'driver', 'car'],
         order: { createdAt: 'DESC' },
       });
+
       this.logger.log(`Total de orçamentos encontrados: ${savedBudget.length}`);
-      return savedBudget.map(
-        (budget) =>
-          new GetBudgetDto(
-            budget.id,
-            budget.origin,
-            budget.destiny,
-            budget.date_hour_trip,
-            budget.date_hour_return_trip,
-            budget.cliente?.name,
-            budget.driver?.name,
-            budget.car?.model,
-            budget.total_distance,
-            budget.trip_price,
-            budget.desired_profit,
-            budget.status,
-          ),
-      );
+
+      return savedBudget.map((budget) => {
+        const driverNames = budget.driver?.map((d) => d.name) || [];
+        const driverIds = budget.driver?.map((d) => d.id) || [];
+
+        return new GetBudgetDto(
+          budget.id,
+          budget.origin,
+          budget.destiny,
+          budget.date_hour_trip,
+          budget.date_hour_return_trip,
+          budget.cliente?.name || '',
+          driverIds,
+          budget.car?.model || '',
+          budget.total_distance,
+          budget.trip_price,
+          budget.desired_profit,
+          budget.status,
+        );
+      });
     } catch (err) {
       this.logger.error(`Erro ao buscar orçamentos do usuário ${userId}`, err.stack);
       throw new BadRequestException(`Erro ao buscar orçamentos: ${err.message}`);
@@ -191,29 +206,32 @@ export class BudgetService {
 
   async getAllTrips(userId: string) {
     this.logger.log(`Buscando todas as viagens aprovadas do usuário ${userId}`);
+
     try {
       const savedBudget = await this.budgetRepository.find({
         where: { user: { id: userId }, status: BudgetStatus.APPROVED },
         relations: ['cliente', 'driver', 'car'],
         order: { updatedAt: 'DESC' },
       });
+
       this.logger.log(`Total de viagens encontradas: ${savedBudget.length}`);
-      return savedBudget.map(
-        (budget) =>
-          new GetTripDetails(
-            budget.id,
-            budget.origin,
-            budget.destiny,
-            budget.date_hour_trip,
-            budget.date_hour_return_trip,
-            budget.cliente?.name,
-            budget.driver?.name,
-            budget.car?.model,
-            budget.total_distance,
-          ),
-      );
-    } 
-    catch (err) {
+
+      return savedBudget.map((budget) => {
+        const driverNames = budget.driver?.map((d) => d.name) || [];
+
+        return new GetTripDetails(
+          budget.id,
+          budget.origin,
+          budget.destiny,
+          budget.date_hour_trip,
+          budget.date_hour_return_trip,
+          budget.cliente?.name || '',
+          driverNames, 
+          budget.car?.model || '',
+          budget.total_distance,
+        );
+      });
+    } catch (err) {
       this.logger.error(`Erro ao buscar viagens do usuário ${userId}`, err.stack);
       throw new BadRequestException(`Erro ao buscar viagens: ${err.message}`);
     }
@@ -221,6 +239,7 @@ export class BudgetService {
 
   async updateBudget(id: string, dto: UpdateBudgetDto, userId: string) {
     this.logger.log(`Atualizando orçamento ID ${id} do usuário ${userId}`);
+
     const budget = await this.budgetRepository.findOne({
       where: { id, user: { id: userId } },
       relations: ['cliente', 'driver', 'car', 'user'],
@@ -236,46 +255,54 @@ export class BudgetService {
       const destino = dto.destino ?? budget.destiny;
       const dataIda = new Date(dto.data_hora_viagem ?? budget.date_hour_trip);
       const dataVolta = new Date(dto.data_hora_viagem_retorno ?? budget.date_hour_return_trip);
-      const driver_id = dto.driver_id ?? budget.driver.id;
+      const driver_id = dto.driver_id ?? budget.driver.map((d) => d.id); // 👈 agora array
       const car_id = dto.car_id ?? budget.car.id;
       const cliente_id = dto.cliente_id ?? budget.cliente.id;
-      const numMotoristas = dto.numMotoristas ?? budget.number_of_drivers;
       const pedagio = dto.pedagio ?? budget.toll ?? 0;
       const lucroDesejado = dto.lucroDesejado ?? budget.desired_profit;
       const impostoPercent = dto.impostoPercent ?? 0;
       const custoExtra = dto.custoExtra ?? budget.extra_cost;
       const status = dto.status ?? budget.status;
 
-      const conflictingBudget = await this.budgetRepository.findOne({
-        where: {
-          driver: { id: driver_id },
-          date_hour_trip: LessThanOrEqual(dataVolta),
-          date_hour_return_trip: MoreThanOrEqual(dataIda),
-          id: Not(id),
-        },
-      });
+      const numMotoristas = driver_id.length;
+
+      const conflictingBudget = await this.budgetRepository
+        .createQueryBuilder('budget')
+        .leftJoin('budget.driver', 'driver')
+        .where('driver.id IN (:...driverIds)', { driverIds: driver_id })
+        .andWhere('budget.date_hour_trip <= :dataVolta', { dataVolta })
+        .andWhere('budget.date_hour_return_trip >= :dataIda', { dataIda })
+        .andWhere('budget.id != :id', { id })
+        .getOne();
 
       if (conflictingBudget) {
-        this.logger.warn(`Conflito de viagem ao atualizar orçamento ID ${id} para motorista ${driver_id}`);
-        throw new ConflictException('O motorista selecionado já possui outra viagem nesse período.');
+        this.logger.warn(`Conflito de viagem ao atualizar orçamento ID ${id} — motoristas: ${driver_id.join(', ')}`);
+        throw new ConflictException('Um ou mais motoristas já possuem outra viagem nesse período.');
       }
 
       const diffTime = Math.abs(dataVolta.getTime() - dataIda.getTime());
       const diasFora = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
       const { distance } = await this.calculateDistance(origem, destino);
       const totalDistance = distance * 2;
 
       const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
-      const { driverCost, dailyPriceDriver, email: driverEmail, name: driverName } =
-        await this.driverApiService.findById(driver_id, userId);
+
+      const driversData = await Promise.all(
+        driver_id.map((id) => this.driverApiService.findById(id, userId)),
+      );
+
+      const totalDriverCost = driversData.reduce((acc, d) => acc + d.driverCost, 0);
+      const totalDailyPriceDriver = driversData.reduce((acc, d) => acc + d.dailyPriceDriver, 0);
+
       const dieselPrice = await this.gasApiService.getDieselSC();
 
       const calc = calculateBudgetValues({
         totalDistance,
         consumption,
         dieselPrice: dieselPrice.preco,
-        driverCost,
-        dailyPriceDriver,
+        driverCost: totalDriverCost,
+        dailyPriceDriver: totalDailyPriceDriver,
         numMotoristas,
         diasFora,
         pedagio,
@@ -301,7 +328,7 @@ export class BudgetService {
         houveLucro: calc.houveLucro,
         status,
         car: { id: car_id } as any,
-        driver: { id: driver_id } as any,
+        driver: driver_id.map((id) => ({ id })), 
         cliente: { id: cliente_id } as any,
         user: { id: userId } as any,
       });
@@ -314,17 +341,19 @@ export class BudgetService {
       const dataVoltaFormatada = dataVolta.toLocaleDateString('pt-BR');
       const horaVoltaFormatada = dataVolta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      if (
+      const viagemAlterada =
         budget.origin !== origem ||
         budget.destiny !== destino ||
         budget.date_hour_trip.getTime() !== dataIda.getTime() ||
-        budget.date_hour_return_trip.getTime() !== dataVolta.getTime()
-      ) {
-        const emailSubject = 'Atualização na sua viagem';
-        const emailText = `
-          Olá ${driverName},
+        budget.date_hour_return_trip.getTime() !== dataVolta.getTime();
 
-          Houve uma atualização nos detalhes da sua viagem.
+      if (viagemAlterada) {
+        const emailSubject = 'Atualização na sua viagem';
+        for (const d of driversData) {
+          const emailText = `
+          Olá ${d.name},
+
+          Houve uma atualização nos detalhes da sua viagem:
 
           Origem: ${origem}
           Destino: ${destino}
@@ -334,9 +363,9 @@ export class BudgetService {
 
           Por favor, verifique os novos detalhes.
         `;
-
-        await this.emailSender.sendEmail(driverEmail, emailSubject, emailText);
-        this.logger.log(`Email enviado para ${driverEmail} sobre atualização de viagem`);
+          await this.emailSender.sendEmail(d.email, emailSubject, emailText);
+          this.logger.log(`Email enviado para ${d.email} sobre atualização de viagem`);
+        }
       }
 
       return {
@@ -349,8 +378,7 @@ export class BudgetService {
         percentualCombustivel: calc.percentualCombustivel.toFixed(2) + '%',
         dieselPrice: dieselPrice.preco,
       };
-    } 
-    catch (err) {
+    } catch (err) {
       this.logger.error(`Erro ao atualizar orçamento ID ${id}`, err.stack);
       throw new BadRequestException(`Erro ao atualizar orçamento: ${err.message}`);
     }
@@ -358,6 +386,7 @@ export class BudgetService {
 
   async updateBudgetStatus(id: string, dto: UpdateBudgetStatusDto, userId: string) {
     this.logger.log(`Atualizando status do orçamento ID ${id} para "${dto.status}"`);
+
     const budget = await this.budgetRepository.findOne({
       where: { id, user: { id: userId } },
       relations: ['user', 'driver', 'car', 'cliente'],
@@ -373,16 +402,30 @@ export class BudgetService {
       const updatedBudget = await this.budgetRepository.save(budget);
       this.logger.log(`Status do orçamento ID ${id} atualizado para "${dto.status}"`);
 
-      if (dto.status === BudgetStatus.APPROVED) {
-        const driver = await this.driverApiService.findById(budget.driver.id, userId);
+      // ✅ Se o orçamento foi aprovado, envia e-mail a todos os motoristas
+      if (dto.status === BudgetStatus.APPROVED && budget.driver?.length) {
+        // Busca informações completas de todos os motoristas
+        const drivers = await Promise.all(
+          budget.driver.map((d) => this.driverApiService.findById(d.id, userId)),
+        );
 
+        // Formata as datas
         const dataIdaFormatada = budget.date_hour_trip.toLocaleDateString('pt-BR');
-        const horaIdaFormatada = budget.date_hour_trip.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const horaIdaFormatada = budget.date_hour_trip.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
         const dataVoltaFormatada = budget.date_hour_return_trip.toLocaleDateString('pt-BR');
-        const horaVoltaFormatada = budget.date_hour_return_trip.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const horaVoltaFormatada = budget.date_hour_return_trip.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
 
         const emailSubject = 'Nova Viagem Confirmada 🚚';
-        const emailText = `
+
+        // Envia email individualmente para cada motorista
+        for (const driver of drivers) {
+          const emailText = `
           Olá ${driver.name},
 
           Você tem uma nova viagem! Aqui estão os detalhes:
@@ -396,13 +439,13 @@ export class BudgetService {
           Boa viagem e dirija com segurança!
         `;
 
-        await this.emailSender.sendEmail(driver.email, emailSubject, emailText);
-        this.logger.log(`Email enviado para ${driver.email} sobre nova viagem`);
+          await this.emailSender.sendEmail(driver.email, emailSubject, emailText);
+          this.logger.log(`Email enviado para ${driver.email} sobre nova viagem`);
+        }
       }
 
       return updatedBudget;
-    } 
-    catch (err) {
+    } catch (err) {
       this.logger.error(`Erro ao atualizar status do orçamento ID ${id}`, err.stack);
       throw new BadRequestException(`Erro ao atualizar status do orçamento: ${err.message}`);
     }
@@ -431,7 +474,6 @@ export class BudgetService {
       throw new BadRequestException(`Erro ao deletar orçamento: ${err.message}`);
     }
   }
-
 }
 
 

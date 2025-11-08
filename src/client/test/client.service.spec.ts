@@ -14,7 +14,7 @@ describe('ClientService', () => {
     id: '1',
     name: 'Cliente 1',
     email: 'cliente@example.com',
-    phone: '123456789',
+    telephone: '123456789',
     user: { id: 'user-123' },
   };
 
@@ -81,9 +81,17 @@ describe('ClientService', () => {
         where: { user: { id: mockUserId } },
         relations: ['user'],
       });
-      expect(result).toEqual([mockClient]);
+      expect(result).toEqual([
+        {
+          id: '1',
+          name: 'Cliente 1',
+          email: 'cliente@example.com',
+          telephone: '123456789',
+        },
+      ]);
     });
   });
+
 
   describe('findById', () => {
     it('should return a client if found', async () => {

@@ -13,7 +13,7 @@ export class GetTripDetails {
 
     readonly cliente_id: string,
 
-    readonly driver_id: string,
+    readonly driver_id: string[],
 
     readonly car_id: string,
 

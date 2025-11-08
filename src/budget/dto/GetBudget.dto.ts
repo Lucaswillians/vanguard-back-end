@@ -15,7 +15,7 @@ export class GetBudgetDto {
     
     readonly cliente_id: string,
     
-    readonly driver_id: string,
+    readonly driver_id: string[],
     
     readonly car_id: string,
     
@@ -23,7 +23,7 @@ export class GetBudgetDto {
     
     readonly preco_viagem: number,
     
-    readonly lucro: number,
+    readonly lucroDesejado: number,
     
     readonly status: BudgetStatus,
   )
