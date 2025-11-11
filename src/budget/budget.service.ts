@@ -81,6 +81,7 @@ export class BudgetService {
     const dataIda = new Date(data_hora_viagem);
     const dataVolta = new Date(data_hora_viagem_retorno);
 
+    // Verifica conflitos de viagem
     const conflictingBudget = await this.budgetRepository
       .createQueryBuilder('budget')
       .leftJoin('budget.driver', 'driver')
@@ -91,7 +92,7 @@ export class BudgetService {
 
     if (conflictingBudget) {
       this.logger.warn(
-        `Conflito de viagem para um ou mais motoristas entre ${dataIda} e ${dataVolta}`,
+        `Conflito de viagem para motoristas entre ${dataIda} e ${dataVolta}`,
       );
       throw new ConflictException(
         'Um ou mais motoristas selecionados já possuem outra viagem nesse período.',
@@ -100,35 +101,35 @@ export class BudgetService {
 
     try {
       const diffTime = Math.abs(dataVolta.getTime() - dataIda.getTime());
-      const diasFora = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const diasFora = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
       const { distance } = await this.calculateDistance(origem, destino);
-      const totalDistance = distance * 2;
+      const totalDistance = Math.max(0, distance * 2);
+
       const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
 
       const driversData = await Promise.all(
         driver_id.map((id) => this.driverApiService.findById(id, userId)),
       );
 
-      const totalDriverCost = driversData.reduce((acc, d) => acc + d.driverCost, 0);
-      const totalDailyPriceDriver = driversData.reduce((acc, d) => acc + d.dailyPriceDriver, 0);
-
-      const numMotoristas = driver_id.length;
+      const totalDriverCost = driversData.reduce((acc, d) => acc + (d.driverCost ?? 0), 0);
+      const totalDailyPriceDriver = driversData.reduce((acc, d) => acc + (d.dailyPriceDriver ?? 0), 0);
+      const numMotoristas = Math.max(1, driver_id.length);
 
       const dieselPrice = await this.gasApiService.getDieselSC();
 
-      function safeNumber(n: number | null | undefined): number {
-        const num = n ?? 0;        
-        return Number.isFinite(num) ? num : 0;
-      }
+      const safeNumber = (n: number | null | undefined) =>
+        Number.isFinite(n) ? n! : 0;
 
+      // Calcula orçamento com proteção total contra Infinity / NaN
       const calc = calculateBudgetValues({
         totalDistance: safeNumber(totalDistance),
-        consumption: safeNumber(consumption),
+        consumption: Math.max(safeNumber(consumption), 0.0001), // evita divisão por zero
         dieselPrice: safeNumber(dieselPrice?.preco),
         driverCost: safeNumber(totalDriverCost),
         dailyPriceDriver: safeNumber(totalDailyPriceDriver),
-        numMotoristas: Math.max(1, numMotoristas), 
-        diasFora: Math.max(1, diasFora),          
+        numMotoristas,
+        diasFora,
         pedagio: safeNumber(pedagio),
         fixed_cost: safeNumber(fixed_cost),
         lucroDesejado: safeNumber(lucroDesejado),
@@ -136,23 +137,29 @@ export class BudgetService {
         custoExtra: safeNumber(custoExtra),
       });
 
+      // Garantia extra: nenhum valor é Infinity/NaN antes de salvar
+      if (!Number.isFinite(calc.valorTotal)) {
+        this.logger.error('Valor total inválido no cálculo do orçamento', calc);
+        throw new BadRequestException('Erro no cálculo do orçamento: valor total inválido');
+      }
+
       const budget = this.budgetRepository.create({
         origin: origem,
         destiny: destino,
         date_hour_trip: dataIda,
         date_hour_return_trip: dataVolta,
-        total_distance: totalDistance,
-        trip_price: calc.valorTotal,
-        desired_profit: lucroDesejado,
+        total_distance: safeNumber(totalDistance),
+        trip_price: safeNumber(calc.valorTotal),
+        desired_profit: safeNumber(lucroDesejado),
         days_out: diasFora,
-        toll: pedagio,
-        fixed_cost,
-        extra_cost: custoExtra,
+        toll: safeNumber(pedagio),
+        fixed_cost: safeNumber(fixed_cost),
+        extra_cost: safeNumber(custoExtra),
         number_of_drivers: numMotoristas,
-        houveLucro: calc.houveLucro,
+        houveLucro: !!calc.houveLucro,
         status: BudgetStatus.PENDING,
         cliente: { id: cliente_id },
-        driver: driver_id.map((id) => ({ id })), 
+        driver: driver_id.map((id) => ({ id })),
         car: { id: car_id },
         user: { id: userId },
       });
@@ -166,15 +173,23 @@ export class BudgetService {
         hora_ida: dataIda.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         data_retorno: dataVolta.toLocaleDateString('pt-BR'),
         hora_retorno: dataVolta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        ...calc,
-        percentualCombustivel: calc.percentualCombustivel.toFixed(2) + '%',
-        dieselPrice: dieselPrice.preco,
+        litersConsumed: safeNumber(calc.litersConsumed),
+        gasCost: safeNumber(calc.gasCost),
+        custoMotoristaMensal: safeNumber(calc.custoMotoristaMensal),
+        custoDiaria: safeNumber(calc.custoDiaria),
+        subtotal: safeNumber(calc.subtotal),
+        imposto: safeNumber(calc.imposto),
+        valorTotal: safeNumber(calc.valorTotal),
+        percentualCombustivel: safeNumber(calc.percentualCombustivel).toFixed(2) + '%',
+        houveLucro: !!calc.houveLucro,
+        dieselPrice: safeNumber(dieselPrice?.preco),
       };
     } catch (err) {
       this.logger.error(`Erro ao criar orçamento para usuário ${userId}`, err.stack);
       throw new BadRequestException(`Erro ao criar orçamento: ${err.message}`);
     }
   }
+
 
 
   async getAllBudgets(userId: string) {
