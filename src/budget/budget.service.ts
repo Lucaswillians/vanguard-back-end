@@ -46,16 +46,21 @@ export class BudgetService {
         throw new BadRequestException('Não foi possível calcular a distância entre origem e destino.');
       }
 
-      const distance = data.routes[0].distance / 1000; // km
+      const distance = data.routes[0].distance / 1000; 
       const duracao = Math.round(data.routes[0].duration / 60);
-      this.logger.log(`Distância calculada: ${distance} km, duração: ${duracao} min`);
-      return { distance, duracao };
-    } 
+
+      const safeDistance = Number.isFinite(distance) ? distance : 0;
+      const safeDuracao = Number.isFinite(duracao) ? duracao : 0;
+
+      this.logger.log(`Distância calculada: ${safeDistance} km, duração: ${safeDuracao} min`);
+      return { distance: safeDistance, duracao: safeDuracao };
+    }
     catch (err) {
       this.logger.error(`Erro ao calcular distância entre "${origem}" e "${destino}"`, err.stack);
       throw new BadRequestException(`Erro ao calcular distância: ${err.message}`);
     }
   }
+
 
   async createBudget(dto: CreateBudgetDto, userId: string) {
     this.logger.log(`Criando orçamento para usuário ${userId}`);
@@ -111,19 +116,24 @@ export class BudgetService {
 
       const dieselPrice = await this.gasApiService.getDieselSC();
 
+      function safeNumber(n: number | null | undefined): number {
+        const num = n ?? 0;        
+        return Number.isFinite(num) ? num : 0;
+      }
+
       const calc = calculateBudgetValues({
-        totalDistance,
-        consumption,
-        dieselPrice: dieselPrice.preco,
-        driverCost: totalDriverCost,
-        dailyPriceDriver: totalDailyPriceDriver,
-        numMotoristas,
-        diasFora,
-        pedagio,
-        fixed_cost: fixed_cost!,
-        lucroDesejado,
-        impostoPercent,
-        custoExtra,
+        totalDistance: safeNumber(totalDistance),
+        consumption: safeNumber(consumption),
+        dieselPrice: safeNumber(dieselPrice?.preco),
+        driverCost: safeNumber(totalDriverCost),
+        dailyPriceDriver: safeNumber(totalDailyPriceDriver),
+        numMotoristas: Math.max(1, numMotoristas), 
+        diasFora: Math.max(1, diasFora),          
+        pedagio: safeNumber(pedagio),
+        fixed_cost: safeNumber(fixed_cost),
+        lucroDesejado: safeNumber(lucroDesejado),
+        impostoPercent: safeNumber(impostoPercent),
+        custoExtra: safeNumber(custoExtra),
       });
 
       const budget = this.budgetRepository.create({
@@ -296,19 +306,24 @@ export class BudgetService {
 
       const dieselPrice = await this.gasApiService.getDieselSC();
 
+      function safeNumber(n: number | null | undefined): number {
+        const num = n ?? 0;
+        return Number.isFinite(num) ? num : 0;
+      }
+
       const calc = calculateBudgetValues({
-        totalDistance,
-        consumption,
-        dieselPrice: dieselPrice.preco,
-        driverCost: totalDriverCost,
-        dailyPriceDriver: totalDailyPriceDriver,
-        numMotoristas,
-        diasFora,
-        pedagio,
-        fixed_cost: fixed_cost!,
-        lucroDesejado,
-        impostoPercent,
-        custoExtra,
+        totalDistance: safeNumber(totalDistance),
+        consumption: safeNumber(consumption),
+        dieselPrice: safeNumber(dieselPrice?.preco),
+        driverCost: safeNumber(totalDriverCost),
+        dailyPriceDriver: safeNumber(totalDailyPriceDriver),
+        numMotoristas: Math.max(1, numMotoristas),
+        diasFora: Math.max(1, diasFora),
+        pedagio: safeNumber(pedagio),
+        fixed_cost: safeNumber(fixed_cost),
+        lucroDesejado: safeNumber(lucroDesejado),
+        impostoPercent: safeNumber(impostoPercent),
+        custoExtra: safeNumber(custoExtra),
       });
 
       Object.assign(budget, {
