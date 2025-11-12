@@ -11,7 +11,7 @@ import { BudgetModule } from './budget/budget.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, envFilePath: process.env.NODE_ENV === 'production' ? '.env' : '.env.local'}),
+      isGlobal: true }),
     UserModule,
     ClientModule,
     CarModule,
