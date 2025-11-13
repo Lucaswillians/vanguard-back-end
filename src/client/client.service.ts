@@ -5,10 +5,11 @@ import { ClientEntity } from "./client.entity";
 import { CreateClientDto } from "./dto/CreateClient.dto";
 import { GetClientDto } from "./dto/GetClient.dto";
 import { UpdateClientDto } from "./dto/UpdateClient.dto";
+import { CloudLogger } from "../logger/cloud.logger";
 
 @Injectable()
 export class ClientService {
-  private readonly logger = new Logger(ClientService.name);
+  private readonly logger = new (CloudLogger as any)(ClientService.name);
 
   @InjectRepository(ClientEntity)
   private readonly clientRepository: Repository<ClientEntity>;

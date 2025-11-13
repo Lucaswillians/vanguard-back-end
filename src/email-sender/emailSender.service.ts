@@ -1,10 +1,11 @@
 import { Inject, Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { CloudLogger } from '../logger/cloud.logger';
 
 @Injectable()
 export class EmailSenderService {
-  private readonly logger = new Logger(EmailSenderService.name);
+  private readonly logger = new (CloudLogger as any)(EmailSenderService.name);
 
   @Inject()
   private readonly configService: ConfigService;

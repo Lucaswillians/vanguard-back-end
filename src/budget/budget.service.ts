@@ -15,10 +15,11 @@ import { UpdateBudgetDto } from './dto/UpdateBudget.dto';
 import { GetTripDetails } from './dto/GetTripDetails.dto';
 import { UpdateBudgetStatusDto } from './dto/UpdateBudgetStatus.dto';
 import { calculateBudgetValues } from '../utils/budgetCalculator.util';
+import { CloudLogger } from '../logger/cloud.logger';
 
 @Injectable()
 export class BudgetService {
-  private readonly logger = new Logger(BudgetService.name);
+  private readonly logger = new (CloudLogger as any)(BudgetService.name);
 
   constructor(
     @InjectRepository(BudgetEntity)

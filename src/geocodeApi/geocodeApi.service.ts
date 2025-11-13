@@ -1,9 +1,10 @@
 import { Inject, Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
+import { CloudLogger } from '../logger/cloud.logger';
 
 @Injectable()
 export class GeocodeApiService {
-  private readonly logger = new Logger(GeocodeApiService.name);
+  private readonly logger = new (CloudLogger as any)(GeocodeApiService.name);
 
   @Inject()
   private readonly http: HttpService;

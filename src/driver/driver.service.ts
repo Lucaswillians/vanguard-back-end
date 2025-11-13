@@ -5,10 +5,11 @@ import { DriverEntity } from './driver.entity';
 import { CreateDriverDto } from './dto/CreateDriver.dto';
 import { UpdateDriverDto } from './dto/UpdateDriver.dto';
 import { BudgetEntity } from '../budget/budget.entity';
+import { CloudLogger } from '../logger/cloud.logger';
 
 @Injectable()
 export class DriverService {
-  private readonly logger = new Logger(DriverService.name);
+  private readonly logger = new (CloudLogger as any)(DriverService.name);
 
   constructor(
     @InjectRepository(DriverEntity)

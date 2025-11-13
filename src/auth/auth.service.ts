@@ -3,11 +3,12 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from "@nestjs/jwt";
 import { RateLimiterService } from "./rate-limiter/rateLimiter.service";
 import { UserService } from "../User/user.service";
+import { CloudLogger } from '../logger/cloud.logger';
 
 @Injectable()
 export class AuthService {
   private readonly saltRounds: number = 10;
-  private readonly logger = new Logger(AuthService.name);
+  private readonly logger = new (CloudLogger as any)(AuthService.name);
 
   @Inject(forwardRef(() => UserService))
   private readonly userService: UserService;

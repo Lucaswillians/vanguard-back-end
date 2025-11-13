@@ -1,10 +1,11 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { CloudLogger } from '../logger/cloud.logger';
 
 @Injectable()
 export class GasApiService {
-  private readonly logger = new Logger(GasApiService.name);
+  private readonly logger = new (CloudLogger as any)(GasApiService.name);
   private readonly BASE_URL = 'https://combustivelapi.com.br/api/precos/';
 
   constructor(private readonly http: HttpService) { }

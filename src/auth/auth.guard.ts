@@ -3,15 +3,15 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
-  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
+import { CloudLogger } from '../logger/cloud.logger';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  private readonly logger = new Logger(AuthGuard.name);
+  private readonly logger = new (CloudLogger as any)(AuthGuard.name);
 
   constructor(
     private readonly jwtService: JwtService,
@@ -31,12 +31,12 @@ export class AuthGuard implements CanActivate {
       const secret = this.configService.get<string>('JWT_SECRET');
       const payload = await this.jwtService.verifyAsync(token, { secret });
 
-      request['user'] = payload; 
+      request['user'] = payload;
       this.logger.log(`Access granted for user: ${payload.sub} to ${request.url}`);
       return true;
-    } 
+    }
     catch (err) {
-      this.logger.warn(`Invalid or expired token for request to ${request.url}`, err.stack);
+      this.logger.warn(`Invalid or expired token for request to ${request.url} - ${err.message}`);
       throw new UnauthorizedException('Invalid or expired token');
     }
   }

@@ -5,10 +5,11 @@ import { CarEntity } from "./car.entity";
 import { CreateCarDto } from "./dto/CreateCar.dto";
 import { GetCarDto } from "./dto/GetCar.dto";
 import { UpdateCarDto } from "./dto/UpdateCar.dto";
+import { CloudLogger } from "../logger/cloud.logger";
 
 @Injectable()
 export class CarService {
-  private readonly logger = new Logger(CarService.name);
+  private readonly logger = new (CloudLogger as any)(CarService.name);
 
   @InjectRepository(CarEntity)
   private readonly carRepository: Repository<CarEntity>;

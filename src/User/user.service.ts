@@ -9,11 +9,12 @@ import { CreateUserDto } from "./dto/CreateUser.dto";
 import { EmailSenderService } from "../email-sender/emailSender.service";
 import { PasswordResetCodeEntity } from "./passwordResetCode/passwordResetCode.entity";
 import { randomBytes } from "crypto";
+import { CloudLogger } from "../logger/cloud.logger";
 
 @Injectable()
 export class UserService {
   private static readonly RESET_CODE_TTL_MIN = 15;
-  private readonly logger = new Logger(UserService.name);
+  private readonly logger = new (CloudLogger as any)(UserService.name);
 
   constructor(
     @InjectRepository(UserEntity)
