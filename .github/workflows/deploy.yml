@@ -1,40 +1,45 @@
-name: Deploy Backend
+name: 🚀 Deploy Backend to VPS
 
 on:
   push:
     branches:
-      - main  # ou master, dependendo do seu branch principal
+      - main  # executa o deploy apenas quando há push na branch main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: 🧩 Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '22'  # versão do Node que você está usando
+      - name: ⚙️ Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'  # usa a mesma versão do servidor
 
-    - name: Install dependencies
-      run: npm install
+      - name: 📦 Install dependencies (for build validation)
+        run: npm ci
 
-    - name: Build project
-      run: npm run build
+      - name: 🏗️ Build project (optional - apenas se necessário no CI)
+        run: npm run build --if-present
 
-    - name: Copy files to server via SSH
-      uses: appleboy/ssh-action@v0.1.8
-      with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: 22
-        script: |
-          cd ~/backend
-          git pull
-          npm install
-          npm run build
-          pm2 restart ${{ secrets.PM2_APP_NAME }}
-
+      - name: 🚀 Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            cd ~/backend
+            echo "🔄 Atualizando repositório..."
+            git fetch origin main
+            git reset --hard origin/main
+            echo "📦 Instalando dependências..."
+            npm ci --omit=dev
+            echo "🏗️ Gerando build..."
+            npm run build
+            echo "🚀 Reiniciando serviço PM2..."
+            pm2 restart ${{ secrets.PM2_APP_NAME }} || pm2 start dist/main.js --name ${{ secrets.PM2_APP_NAME }}
+            echo "✅ Deploy concluído com sucesso!"
