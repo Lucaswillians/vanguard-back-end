@@ -11,7 +11,7 @@ export class GetBudgetDto {
     
     readonly data_hora_viagem: Date,
     
-    readonly date_hour_return_trip: Date,
+    readonly data_hora_viagem_retorno: Date,
     
     readonly cliente_id: string,
     
@@ -26,6 +26,10 @@ export class GetBudgetDto {
     readonly lucroDesejado: number,
     
     readonly status: BudgetStatus,
+
+    readonly pedagio: number,
+
+    readonly custoExtra: number,
   )
   {}
 }
