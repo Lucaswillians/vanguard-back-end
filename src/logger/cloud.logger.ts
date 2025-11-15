@@ -22,7 +22,8 @@ export class CloudLogger implements LoggerService {
           'Authorization': `Bearer ${this.token}`,
         },
       });
-    } catch (err) {
+    }
+     catch (err) {
       console.error('Failed to send log to Cloud:', err.message);
     }
   }

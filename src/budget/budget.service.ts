@@ -67,6 +67,11 @@ export class BudgetService {
     this.logger.log(`Criando orçamento para usuário ${userId}`);
     this.logger.log('===== DADOS RECEBIDOS =====', dto);
 
+    const num = (n: any): number => {
+      const v = Number(String(n).replace(',', '.'));
+      return Number.isFinite(v) ? v : 0;
+    };
+
     const {
       origem,
       destino,
@@ -84,7 +89,13 @@ export class BudgetService {
     const dataIda = new Date(data_hora_viagem);
     const dataVolta = new Date(data_hora_viagem_retorno);
 
-    // Verifica conflitos de viagem
+    if (isNaN(dataIda.getTime())) {
+      throw new BadRequestException('Data da viagem inválida');
+    }
+    if (isNaN(dataVolta.getTime())) {
+      throw new BadRequestException('Data de retorno inválida');
+    }
+
     const conflictingBudget = await this.budgetRepository
       .createQueryBuilder('budget')
       .leftJoin('budget.driver', 'driver')
@@ -106,50 +117,55 @@ export class BudgetService {
       this.logger.log('Dias fora:', diasFora);
 
       const { distance } = await this.calculateDistance(origem, destino);
-      this.logger.log('Distance calculada:', distance);
-      const totalDistance = distance * 2;
+      const totalDistance = num(distance * 2);
+      this.logger.log('Distance calculada:', totalDistance);
 
-      const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
-      this.logger.log('Dados do carro:', { consumption, fixed_cost });
+      const carData = await this.carApiService.findById(car_id, userId);
+      const consumption = num(carData.consumption);
+      const fixed_cost = num(carData.fixed_cost);
 
-      const driversData = await Promise.all(driver_id.map(id => this.driverApiService.findById(id, userId)));
+      this.logger.log('Dados do carro sanitizados:', { consumption, fixed_cost });
+
+      const driversData = await Promise.all(
+        driver_id.map(id => this.driverApiService.findById(id, userId)),
+      );
       this.logger.log('Dados dos motoristas:', driversData);
 
-      const totalDriverCost = driversData.reduce((acc, d) => acc + (d.driverCost ?? 0), 0);
-      const totalDailyPriceDriver = driversData.reduce((acc, d) => acc + (d.dailyPriceDriver ?? 0), 0);
+      const totalDriverCost = num(driversData.reduce((acc, d) => acc + num(d.driverCost), 0));
+      const totalDailyPriceDriver = num(driversData.reduce((acc, d) => acc + num(d.dailyPriceDriver), 0));
       const numMotoristas = Math.max(1, driver_id.length);
 
       const dieselPrice = await this.gasApiService.getDieselSC();
-      this.logger.log('Preço diesel:', dieselPrice);
+      const diesel = num(dieselPrice?.preco);
 
       this.logger.log('===== VALORES ANTES DO CÁLCULO =====', {
         totalDistance,
         consumption,
-        dieselPrice: dieselPrice?.preco,
+        diesel,
         totalDriverCost,
         totalDailyPriceDriver,
         numMotoristas,
         diasFora,
-        pedagio,
+        pedagio: num(pedagio),
         fixed_cost,
-        lucroDesejado,
-        impostoPercent,
-        custoExtra,
+        lucroDesejado: num(lucroDesejado),
+        impostoPercent: num(impostoPercent),
+        custoExtra: num(custoExtra),
       });
 
       const calc = calculateBudgetValues({
         totalDistance,
         consumption,
-        dieselPrice: dieselPrice?.preco,
+        dieselPrice: diesel,
         driverCost: totalDriverCost,
         dailyPriceDriver: totalDailyPriceDriver,
         numMotoristas,
         diasFora,
-        pedagio,
-        fixed_cost: fixed_cost!,
-        lucroDesejado,
-        impostoPercent,
-        custoExtra,
+        pedagio: num(pedagio),
+        fixed_cost,
+        lucroDesejado: num(lucroDesejado),
+        impostoPercent: num(impostoPercent),
+        custoExtra: num(custoExtra),
       });
 
       this.logger.log('===== RESULTADO DO CÁLCULO =====', calc);
@@ -160,12 +176,12 @@ export class BudgetService {
         date_hour_trip: dataIda,
         date_hour_return_trip: dataVolta,
         total_distance: totalDistance,
-        trip_price: calc.valorTotal,
-        desired_profit: lucroDesejado,
+        trip_price: num(calc.valorTotal),
+        desired_profit: num(lucroDesejado),
         days_out: diasFora,
-        toll: pedagio,
-        fixed_cost: fixed_cost,
-        extra_cost: custoExtra,
+        toll: num(pedagio),
+        fixed_cost,
+        extra_cost: num(custoExtra),
         number_of_drivers: numMotoristas,
         houveLucro: !!calc.houveLucro,
         status: BudgetStatus.PENDING,
@@ -181,27 +197,31 @@ export class BudgetService {
       return {
         ...savedBudget,
         data_ida: dataIda.toLocaleDateString('pt-BR'),
-        hora_ida: dataIda.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        hora_ida: dataIda.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
         data_retorno: dataVolta.toLocaleDateString('pt-BR'),
-        hora_retorno: dataVolta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        hora_retorno: dataVolta.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
         litersConsumed: calc.litersConsumed,
         gasCost: calc.gasCost,
         custoMotoristaMensal: calc.custoMotoristaMensal,
         custoDiaria: calc.custoDiaria,
         subtotal: calc.subtotal,
         imposto: calc.imposto,
-        valorTotal: calc.valorTotal,
+        valorTotal: num(calc.valorTotal),
         percentualCombustivel: calc.percentualCombustivel.toFixed(2) + '%',
         houveLucro: !!calc.houveLucro,
-        dieselPrice: dieselPrice?.preco,
+        dieselPrice: diesel,
       };
     } catch (err) {
       this.logger.error(`Erro ao criar orçamento para usuário ${userId}`, err.stack);
       throw new BadRequestException(`Erro ao criar orçamento: ${err.message}`);
     }
   }
-
-
 
   async getAllBudgets(userId: string) {
     this.logger.log(`Buscando todos os orçamentos do usuário ${userId}`);
@@ -231,6 +251,8 @@ export class BudgetService {
           budget.trip_price,
           budget.desired_profit,
           budget.status,
+          budget.toll || 0,
+          budget.extra_cost
         );
       });
     } catch (err) {
@@ -281,22 +303,27 @@ export class BudgetService {
     });
 
     if (!budget) {
-      this.logger.warn(`Orçamento ID ${id} não encontrado para usuário ${userId}`);
       throw new NotFoundException('Orçamento não encontrado ou não pertence a este usuário.');
     }
 
     try {
       const origem = dto.origem ?? budget.origin;
       const destino = dto.destino ?? budget.destiny;
-      const dataIda = new Date(dto.data_hora_viagem ?? budget.date_hour_trip);
-      const dataVolta = new Date(dto.data_hora_viagem_retorno ?? budget.date_hour_return_trip);
-      const driver_id = dto.driver_id ?? budget.driver.map((d) => d.id); // 👈 agora array
+
+      const dataIda = dto.data_hora_viagem ? new Date(dto.data_hora_viagem) : budget.date_hour_trip;
+      const dataVolta = dto.data_hora_viagem_retorno
+        ? new Date(dto.data_hora_viagem_retorno)
+        : budget.date_hour_return_trip;
+
+      const driver_id = dto.driver_id ?? budget.driver.map(d => d.id);
       const car_id = dto.car_id ?? budget.car.id;
       const cliente_id = dto.cliente_id ?? budget.cliente.id;
+
       const pedagio = dto.pedagio ?? budget.toll ?? 0;
-      const lucroDesejado = dto.lucroDesejado ?? budget.desired_profit;
-      const impostoPercent = dto.impostoPercent ?? 0;
+      const lucroDesejadoDto = dto.lucroDesejado;
+      const precoViagemDto = dto.preco_viagem;
       const custoExtra = dto.custoExtra ?? budget.extra_cost;
+      const impostoPercent = dto.impostoPercent ?? 0;
       const status = dto.status ?? budget.status;
 
       const numMotoristas = driver_id.length;
@@ -311,12 +338,11 @@ export class BudgetService {
         .getOne();
 
       if (conflictingBudget) {
-        this.logger.warn(`Conflito de viagem ao atualizar orçamento ID ${id} — motoristas: ${driver_id.join(', ')}`);
         throw new ConflictException('Um ou mais motoristas já possuem outra viagem nesse período.');
       }
 
       const diffTime = Math.abs(dataVolta.getTime() - dataIda.getTime());
-      const diasFora = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const diasFora = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
       const { distance } = await this.calculateDistance(origem, destino);
       const totalDistance = distance * 2;
@@ -324,33 +350,84 @@ export class BudgetService {
       const { consumption, fixed_cost } = await this.carApiService.findById(car_id, userId);
 
       const driversData = await Promise.all(
-        driver_id.map((id) => this.driverApiService.findById(id, userId)),
+        driver_id.map(id => this.driverApiService.findById(id, userId)),
       );
 
-      const totalDriverCost = driversData.reduce((acc, d) => acc + d.driverCost, 0);
-      const totalDailyPriceDriver = driversData.reduce((acc, d) => acc + d.dailyPriceDriver, 0);
+      const totalDriverCost = driversData.reduce((acc, d) => acc + (d.driverCost ?? 0), 0);
+      const totalDailyPriceDriver = driversData.reduce(
+        (acc, d) => acc + (d.dailyPriceDriver ?? 0),
+        0,
+      );
 
       const dieselPrice = await this.gasApiService.getDieselSC();
+      const diesel = dieselPrice?.preco ?? 0;
 
-      function safeNumber(n: number | null | undefined): number {
-        const num = n ?? 0;
-        return Number.isFinite(num) ? num : 0;
+      const baseSemLucro = calculateBudgetValues({
+        totalDistance,
+        consumption,
+        dieselPrice: diesel,
+        driverCost: totalDriverCost,
+        dailyPriceDriver: totalDailyPriceDriver,
+        numMotoristas,
+        diasFora,
+        pedagio,
+        fixed_cost: fixed_cost!,
+        lucroDesejado: 0,
+        impostoPercent,
+        custoExtra,
+      });
+
+      let lucroFinal: number;
+      let trip_price: number;
+
+      if (precoViagemDto !== undefined) {
+        trip_price = precoViagemDto;
+        lucroFinal = trip_price - (baseSemLucro.subtotal + baseSemLucro.imposto);
+
+      } 
+      else if (lucroDesejadoDto !== undefined) {
+        lucroFinal = lucroDesejadoDto;
+
+        const calcComLucro = calculateBudgetValues({
+          totalDistance,
+          consumption,
+          dieselPrice: diesel,
+          driverCost: totalDriverCost,
+          dailyPriceDriver: totalDailyPriceDriver,
+          numMotoristas,
+          diasFora,
+          pedagio,
+          fixed_cost: fixed_cost!,
+          lucroDesejado: lucroFinal,
+          impostoPercent,
+          custoExtra,
+        });
+
+        trip_price = calcComLucro.valorTotal;
+
+      } 
+      else {
+        lucroFinal = budget.desired_profit;
+
+        const calcComLucro = calculateBudgetValues({
+          totalDistance,
+          consumption,
+          dieselPrice: diesel,
+          driverCost: totalDriverCost,
+          dailyPriceDriver: totalDailyPriceDriver,
+          numMotoristas,
+          diasFora,
+          pedagio,
+          fixed_cost: fixed_cost!,
+          lucroDesejado: lucroFinal,
+          impostoPercent,
+          custoExtra,
+        });
+
+        trip_price = calcComLucro.valorTotal;
       }
 
-      const calc = calculateBudgetValues({
-        totalDistance: safeNumber(totalDistance),
-        consumption: safeNumber(consumption),
-        dieselPrice: safeNumber(dieselPrice?.preco),
-        driverCost: safeNumber(totalDriverCost),
-        dailyPriceDriver: safeNumber(totalDailyPriceDriver),
-        numMotoristas: Math.max(1, numMotoristas),
-        diasFora: Math.max(1, diasFora),
-        pedagio: safeNumber(pedagio),
-        fixed_cost: safeNumber(fixed_cost),
-        lucroDesejado: safeNumber(lucroDesejado),
-        impostoPercent: safeNumber(impostoPercent),
-        custoExtra: safeNumber(custoExtra),
-      });
+      const houveLucroFinal = lucroFinal > 0;
 
       Object.assign(budget, {
         origin: origem,
@@ -358,66 +435,31 @@ export class BudgetService {
         date_hour_trip: dataIda,
         date_hour_return_trip: dataVolta,
         total_distance: totalDistance,
-        trip_price: calc.valorTotal,
-        desired_profit: lucroDesejado,
+        trip_price,
+        desired_profit: lucroFinal,
         days_out: diasFora,
         toll: pedagio,
         fixed_cost,
         extra_cost: custoExtra,
         number_of_drivers: numMotoristas,
-        houveLucro: calc.houveLucro,
+        houveLucro: houveLucroFinal,
         status,
-        car: { id: car_id } as any,
-        driver: driver_id.map((id) => ({ id })), 
-        cliente: { id: cliente_id } as any,
-        user: { id: userId } as any,
+        car: { id: car_id },
+        driver: driver_id.map(id => ({ id })),
+        cliente: { id: cliente_id },
+        user: { id: userId },
       });
 
-      const updatedBudget = await this.budgetRepository.save(budget);
-      this.logger.log(`Orçamento ID ${id} atualizado com sucesso`);
-
-      const dataIdaFormatada = dataIda.toLocaleDateString('pt-BR');
-      const horaIdaFormatada = dataIda.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const dataVoltaFormatada = dataVolta.toLocaleDateString('pt-BR');
-      const horaVoltaFormatada = dataVolta.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-      const viagemAlterada =
-        budget.origin !== origem ||
-        budget.destiny !== destino ||
-        budget.date_hour_trip.getTime() !== dataIda.getTime() ||
-        budget.date_hour_return_trip.getTime() !== dataVolta.getTime();
-
-      if (viagemAlterada) {
-        const emailSubject = 'Atualização na sua viagem';
-        for (const d of driversData) {
-          const emailText = `
-          Olá ${d.name},
-
-          Houve uma atualização nos detalhes da sua viagem:
-
-          Origem: ${origem}
-          Destino: ${destino}
-          Data e hora de ida: ${dataIdaFormatada} às ${horaIdaFormatada}
-          Data e hora de retorno: ${dataVoltaFormatada} às ${horaVoltaFormatada}
-          Número de dias fora: ${diasFora}
-
-          Por favor, verifique os novos detalhes.
-        `;
-          await this.emailSender.sendEmail(d.email, emailSubject, emailText);
-          this.logger.log(`Email enviado para ${d.email} sobre atualização de viagem`);
-        }
-      }
+      const saved = await this.budgetRepository.save(budget);
 
       return {
-        ...updatedBudget,
-        data_ida: dataIdaFormatada,
-        hora_ida: horaIdaFormatada,
-        data_retorno: dataVoltaFormatada,
-        hora_retorno: horaVoltaFormatada,
-        ...calc,
-        percentualCombustivel: calc.percentualCombustivel.toFixed(2) + '%',
-        dieselPrice: dieselPrice.preco,
+        ...saved,
+        valorTotal: trip_price,
+        desired_profit: lucroFinal,
+        houveLucro: houveLucroFinal,
+        dieselPrice: diesel,
       };
+
     } catch (err) {
       this.logger.error(`Erro ao atualizar orçamento ID ${id}`, err.stack);
       throw new BadRequestException(`Erro ao atualizar orçamento: ${err.message}`);
@@ -442,14 +484,11 @@ export class BudgetService {
       const updatedBudget = await this.budgetRepository.save(budget);
       this.logger.log(`Status do orçamento ID ${id} atualizado para "${dto.status}"`);
 
-      // ✅ Se o orçamento foi aprovado, envia e-mail a todos os motoristas
       if (dto.status === BudgetStatus.APPROVED && budget.driver?.length) {
-        // Busca informações completas de todos os motoristas
         const drivers = await Promise.all(
           budget.driver.map((d) => this.driverApiService.findById(d.id, userId)),
         );
 
-        // Formata as datas
         const dataIdaFormatada = budget.date_hour_trip.toLocaleDateString('pt-BR');
         const horaIdaFormatada = budget.date_hour_trip.toLocaleTimeString('pt-BR', {
           hour: '2-digit',
@@ -463,7 +502,6 @@ export class BudgetService {
 
         const emailSubject = 'Nova Viagem Confirmada 🚚';
 
-        // Envia email individualmente para cada motorista
         for (const driver of drivers) {
           const emailText = `
           Olá ${driver.name},
