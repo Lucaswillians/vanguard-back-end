@@ -16,12 +16,15 @@ jobs:
       - name: ⚙️ Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'  # usa a mesma versão do servidor
+          node-version: '22'
 
-      - name: 📦 Install dependencies (for build validation)
+      - name: 📦 Install dependencies
         run: npm ci
 
-      - name: 🏗️ Build project (optional - apenas se necessário no CI)
+      - name: 🧪 Run Tests
+        run: npm test
+
+      - name: 🏗️ Build project
         run: npm run build --if-present
 
       - name: 🚀 Deploy to VPS via SSH
