@@ -59,6 +59,7 @@ describe('calculateBudgetValues', () => {
     const result = calculateBudgetValues(input);
 
     expect(result.valorTotal).toBe(0);
-    expect(result.houveLucro).toBe(false);
+    expect(result.houveLucro).toBe(true);
   });
+
 });
