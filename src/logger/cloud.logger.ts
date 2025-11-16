@@ -4,13 +4,17 @@ import axios from 'axios';
 export class CloudLogger implements LoggerService {
   private endpoint = 'https://logs.collector.na-01.cloud.solarwinds.com/v1/logs';
   private token = process.env.PAPERTRAIL_TOKEN;
-  private context?: string; 
+  private context?: string;
 
   constructor(context?: string) {
     this.context = context;
   }
 
   private async sendLog(level: string, message: string) {
+    if (process.env.NODE_ENV === 'test') {
+      return;
+    }
+
     const formattedMessage = this.context
       ? `[${this.context}] ${message}`
       : message;
@@ -19,12 +23,14 @@ export class CloudLogger implements LoggerService {
       await axios.post(this.endpoint, formattedMessage, {
         headers: {
           'Content-Type': 'application/octet-stream',
-          'Authorization': `Bearer ${this.token}`,
+          Authorization: `Bearer ${this.token}`,
         },
       });
-    }
-     catch (err) {
-      console.error('Failed to send log to Cloud:', err.message);
+    } 
+    catch (err) {
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Failed to send log to Cloud:', err.message);
+      }
     }
   }
 
