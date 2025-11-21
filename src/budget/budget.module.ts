@@ -15,6 +15,7 @@ import { ClientModule } from '../client/client.module';
 import { CarModule } from '../car/car.module';
 import { UserEntity } from '..//User/user.entity';
 import { AuthModule } from '..//auth/auth.module';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
@@ -27,6 +28,10 @@ import { AuthModule } from '..//auth/auth.module';
     ClientModule,
     CarModule,
     forwardRef(() => AuthModule),
+    CacheModule.register({
+      ttl: 60 * 10,
+      max: 100,
+    })
   ],
   controllers: [BudgetController],
   providers: [BudgetService],

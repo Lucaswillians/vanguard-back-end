@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger, UseInterceptors, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BudgetEntity } from './budget.entity';
@@ -16,7 +16,10 @@ import { GetTripDetails } from './dto/GetTripDetails.dto';
 import { UpdateBudgetStatusDto } from './dto/UpdateBudgetStatus.dto';
 import { calculateBudgetValues } from '../utils/budgetCalculator.util';
 import { CloudLogger } from '../logger/cloud.logger';
+import { CACHE_MANAGER, CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
+@UseInterceptors(CacheInterceptor)
 @Injectable()
 export class BudgetService {
   private readonly logger = new (CloudLogger as any)(BudgetService.name);
@@ -30,10 +33,22 @@ export class BudgetService {
     private readonly carApiService: CarService,
     private readonly driverApiService: DriverService,
     private readonly http: HttpService,
+    @Inject(CACHE_MANAGER) private cache: Cache,
+
   ) { }
 
+  @CacheTTL(60 * 10)
   async calculateDistance(origem: string, destino: string) {
     this.logger.log(`Calculando distância entre "${origem}" e "${destino}"`);
+
+    const cacheKey = `distance-${origem.toLowerCase()}-${destino.toLowerCase()}`;
+    const cached = await this.cache.get(cacheKey) as any;
+
+    if (cached) {
+      this.logger.log(`Distância entre "${origem}" e "${destino}" retornada pelo CACHE`);
+      return cached;
+    }
+
     try {
       const origemCoord = await this.geocodeApiService.getCoordinates(origem);
       const destinoCoord = await this.geocodeApiService.getCoordinates(destino);
@@ -47,21 +62,28 @@ export class BudgetService {
         throw new BadRequestException('Não foi possível calcular a distância entre origem e destino.');
       }
 
-      const distance = data.routes[0].distance / 1000; 
+      const distance = data.routes[0].distance / 1000;
       const duracao = Math.round(data.routes[0].duration / 60);
 
       const safeDistance = Number.isFinite(distance) ? distance : 0;
       const safeDuracao = Number.isFinite(duracao) ? duracao : 0;
 
+      const result = {
+        distance: safeDistance,
+        duracao: safeDuracao
+      };
+
       this.logger.log(`Distância calculada: ${safeDistance} km, duração: ${safeDuracao} min`);
-      return { distance: safeDistance, duracao: safeDuracao };
+
+      await this.cache.set(cacheKey, result, 60 * 10 * 1000);
+
+      return result;
     }
     catch (err) {
       this.logger.error(`Erro ao calcular distância entre "${origem}" e "${destino}"`, err.stack);
       throw new BadRequestException(`Erro ao calcular distância: ${err.message}`);
     }
   }
-
 
   async createBudget(dto: CreateBudgetDto, userId: string) {
     this.logger.log(`Criando orçamento para usuário ${userId}`);
