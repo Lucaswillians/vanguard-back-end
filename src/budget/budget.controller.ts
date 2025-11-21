@@ -18,12 +18,15 @@ import { BudgetEntity } from './budget.entity';
 import { GetBudgetDto } from './dto/GetBudget.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { UpdateBudgetStatusDto } from './dto/UpdateBudgetStatus.dto';
+import { GasApiService } from 'src/gasApi/gasApi.service';
 
 @Controller('budget')
 @UseGuards(AuthGuard) 
 export class BudgetController {
   @Inject()
   private readonly budgetService: BudgetService;
+  @Inject()
+  private readonly gasApiService: GasApiService;
 
   @Post()
   async create(
@@ -33,7 +36,6 @@ export class BudgetController {
     const userId = req.user?.sub;
     return this.budgetService.createBudget(dto, userId);
   }
-
 
   @Get()
   async getAllBudgets(@Req() req: any): Promise<GetBudgetDto[]> {
@@ -81,5 +83,10 @@ export class BudgetController {
   async deleteBudget(@Param('id') id: string, @Req() req) {
     const userId = req.user.id;
     return this.budgetService.deleteBudget(id, userId);
+  }
+
+  @Get('diesel')
+  async getDieselSC() {
+    return this.gasApiService.getDieselSC();
   }
 }
