@@ -1,3 +1,4 @@
+import { RecaptchaService } from './recaptcha/recaptcha.service';
 import { Inject, Injectable, Logger, UnauthorizedException, forwardRef } from "@nestjs/common";
 import * as bcrypt from 'bcrypt';
 import { JwtService } from "@nestjs/jwt";
@@ -10,14 +11,18 @@ export class AuthService {
   private readonly saltRounds: number = 10;
   private readonly logger = new (CloudLogger as any)(AuthService.name);
 
-  @Inject(forwardRef(() => UserService))
-  private readonly userService: UserService;
+  constructor(
+    @Inject(forwardRef(() => UserService))
+    private readonly userService: UserService,
 
-  @Inject()
-  private readonly jwtService: JwtService;
+    @Inject()
+    private readonly jwtService: JwtService,
 
-  @Inject()
-  private readonly rateLimiterService: RateLimiterService;
+    @Inject()
+    private readonly rateLimiterService: RateLimiterService,
+
+    private readonly recaptchaService: RecaptchaService, 
+  ) {}
 
   async hashPassword(password: string): Promise<string> {
     this.logger.log('Hashing password');
@@ -29,8 +34,11 @@ export class AuthService {
     return bcrypt.compare(plainPassword, hashedPassword);
   }
 
-  async signIn(email: string, password: string, ip: string) {
+  async signIn(email: string, password: string, ip: string, recaptchaToken: string) {
     this.logger.log(`Attempting login for user: ${email} from IP: ${ip}`);
+
+    await this.recaptchaService.validate(recaptchaToken);
+
     const canAttemptLogin = await this.rateLimiterService.checkLoginAttempt(ip, email);
 
     if (!canAttemptLogin) {

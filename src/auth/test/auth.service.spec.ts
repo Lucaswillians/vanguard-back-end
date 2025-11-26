@@ -27,14 +27,21 @@ describe('AuthService', () => {
       getOneJWTverify: jest.fn(),
     } as any;
 
-    authService = new AuthService();
-    (authService as any).jwtService = jwtService;
-    (authService as any).rateLimiterService = rateLimiterService;
-    (authService as any).userService = userService;
+    const recaptchaService = {
+      validate: jest.fn().mockResolvedValue(true),  // <-- CORREÇÃO AQUI
+    } as any;
+
+    authService = new AuthService(
+      userService,
+      jwtService,
+      rateLimiterService,
+      recaptchaService,
+    );
 
     process.env.JWT_SECRET = 'testsecret';
     process.env.JWT_EXPIRATION = '1h';
   });
+
 
   afterEach(() => {
     jest.clearAllMocks();
@@ -67,24 +74,24 @@ describe('AuthService', () => {
     const ip = '127.0.0.1';
     const email = 'user@test.com';
     const password = '123456';
+    const recaptchaToken = 'mockToken';
 
-    // Mock compatível com GetUserDto
     const user = new GetUserDto('1', 'TestUser', email, 'hashedPassword');
 
     it('deve lançar erro se ultrapassar limite de tentativas', async () => {
       rateLimiterService.checkLoginAttempt.mockResolvedValueOnce(false);
-      await expect(authService.signIn(email, password, ip)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(authService.signIn(email, password, ip, recaptchaToken))
+        .rejects.toThrow(UnauthorizedException);
+
       expect(rateLimiterService.checkLoginAttempt).toHaveBeenCalledWith(ip, email);
     });
 
     it('deve lançar erro se o usuário não for encontrado', async () => {
       rateLimiterService.checkLoginAttempt.mockResolvedValueOnce(true);
       userService.getOneJWTverify.mockResolvedValueOnce(null as any);
-      await expect(authService.signIn(email, password, ip)).rejects.toThrow(
-        UnauthorizedException,
-      );
+
+      await expect(authService.signIn(email, password, ip, recaptchaToken))
+        .rejects.toThrow(UnauthorizedException);
     });
 
     it('deve lançar erro se a senha for inválida', async () => {
@@ -92,9 +99,8 @@ describe('AuthService', () => {
       userService.getOneJWTverify.mockResolvedValueOnce(user);
       jest.spyOn(authService, 'comparePasswords').mockResolvedValueOnce(false);
 
-      await expect(authService.signIn(email, password, ip)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(authService.signIn(email, password, ip, recaptchaToken))
+        .rejects.toThrow(UnauthorizedException);
     });
 
     it('deve retornar token se o login for bem-sucedido', async () => {
@@ -104,7 +110,7 @@ describe('AuthService', () => {
       jwtService.signAsync.mockResolvedValueOnce('token');
       rateLimiterService.resetAttempts.mockResolvedValueOnce(undefined);
 
-      const result = await authService.signIn(email, password, ip);
+      const result = await authService.signIn(email, password, ip, recaptchaToken);
 
       expect(result).toEqual({
         message: 'Login successfully',
@@ -118,6 +124,7 @@ describe('AuthService', () => {
       );
     });
   });
+
 
   describe('verifyToken', () => {
     it('deve retornar payload válido se o token for correto', async () => {

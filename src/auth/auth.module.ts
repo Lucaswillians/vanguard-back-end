@@ -8,6 +8,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoginAttempt } from './rate-limiter/loginAttemp.entity';
 import { RateLimiterService } from './rate-limiter/rateLimiter.service';
+import { RecaptchaService } from './recaptcha/recaptcha.service';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { RateLimiterService } from './rate-limiter/rateLimiter.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, RateLimiterService],
-  exports: [AuthService, JwtModule],
+  providers: [AuthService, RateLimiterService, RecaptchaService],
+  exports: [AuthService, JwtModule, RecaptchaService],
 })
 export class AuthModule { }

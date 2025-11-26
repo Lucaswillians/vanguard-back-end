@@ -14,26 +14,38 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('signin')
-  async signin(@Body() userData: CreateUserDto, @Res({ passthrough: true }) res: Response) {
-    const { email, password } = userData;
-    const ip = 'some-ip';
+  async signin(
+    @Body() userData: CreateUserDto,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const { email, password, recaptchaToken } = userData;
+
+    if (!recaptchaToken) {
+      throw new UnauthorizedException("hCaptcha não verificado.");
+    }
+
+    const ip = "some-ip"; // você pode pegar do req: req.ip
     const canLogin = await this.rateLimiterService.checkLoginAttempt(ip, email);
 
     if (!canLogin) {
-      throw new UnauthorizedException('Too many login attempts, please try again later.');
+      throw new UnauthorizedException(
+        "Too many login attempts, please try again later."
+      );
     }
 
-    const token = await this.authService.signIn(email, password, ip);
+    const token = await this.authService.signIn(email, password, ip, recaptchaToken);
 
-    res.cookie('access_token', token.access_token, {
+    res.cookie("access_token", token.access_token, {
       httpOnly: true,
-      // secure: process.env.NODE_ENV === 'production',
       secure: false,
-      sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24, 
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24, // 24h
     });
 
-    return { message: 'Login realizado com sucesso!', accessToken: token.access_token }; 
+    return {
+      message: "Login realizado com sucesso!",
+      accessToken: token.access_token,
+    };
   }
 
   @Post('logout')
@@ -50,5 +62,4 @@ export class AuthController {
     const payload = await this.authService.verifyToken(token);
     return { user: payload };
   }
-
 }

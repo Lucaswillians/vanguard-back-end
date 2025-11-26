@@ -13,4 +13,8 @@ export class CreateUserDto {
   @IsNotEmpty()
   @MinLength(6, { message: 'Password must be at least 6 characters long' })
   readonly password: string;
+
+  @IsString()
+  @IsNotEmpty()
+  readonly recaptchaToken: string;
 }

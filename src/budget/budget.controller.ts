@@ -18,7 +18,7 @@ import { BudgetEntity } from './budget.entity';
 import { GetBudgetDto } from './dto/GetBudget.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { UpdateBudgetStatusDto } from './dto/UpdateBudgetStatus.dto';
-import { GasApiService } from 'src/gasApi/gasApi.service';
+import { GasApiService } from '../gasApi/gasApi.service';
 
 @Controller('budget')
 @UseGuards(AuthGuard) 

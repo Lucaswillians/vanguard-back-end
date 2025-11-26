@@ -53,18 +53,29 @@ describe('BudgetService', () => {
             axiosRef: { get: jest.fn() },
           },
         },
+
+        // 👉 **ADICIONE ISTO**
+        {
+          provide: 'CACHE_MANAGER',
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<BudgetService>(BudgetService);
     httpService = module.get<HttpService>(HttpService);
-    budgetRepo = module.get<Repository<BudgetEntity>>(getRepositoryToken(BudgetEntity));
-    geocodeService = module.get<GeocodeApiService>(GeocodeApiService);
-    carService = module.get<CarService>(CarService);
-    driverService = module.get<DriverService>(DriverService);
-    gasService = module.get<GasApiService>(GasApiService);
-    emailService = module.get<EmailSenderService>(EmailSenderService);
+    budgetRepo = module.get(getRepositoryToken(BudgetEntity));
+    geocodeService = module.get(GeocodeApiService);
+    carService = module.get(CarService);
+    driverService = module.get(DriverService);
+    gasService = module.get(GasApiService);
+    emailService = module.get(EmailSenderService);
   });
+
 
   // ===============================
   // DISTANCE

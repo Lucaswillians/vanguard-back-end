@@ -5,6 +5,7 @@ import { AuthGuard } from '../../auth/auth.guard';
 import { CreateBudgetDto } from '../dto/CreateBudget.dto';
 import { UpdateBudgetDto } from '../dto/UpdateBudget.dto';
 import { UpdateBudgetStatusDto } from '../dto/UpdateBudgetStatus.dto';
+import { GasApiService } from '../../gasApi/gasApi.service';
 
 describe('BudgetController', () => {
   let controller: BudgetController;
@@ -24,15 +25,17 @@ describe('BudgetController', () => {
       controllers: [BudgetController],
       providers: [
         { provide: BudgetService, useValue: mockBudgetService },
+        { provide: GasApiService, useValue: { getGasPrice: jest.fn() } },
       ],
     })
       .overrideGuard(AuthGuard)
-      .useValue({ canActivate: () => true }) // ignora autenticação
+      .useValue({ canActivate: () => true })
       .compile();
 
     controller = module.get<BudgetController>(BudgetController);
     service = module.get<BudgetService>(BudgetService);
   });
+
 
   afterEach(() => {
     jest.clearAllMocks();

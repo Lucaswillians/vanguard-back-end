@@ -10,6 +10,8 @@ import { EmailSenderService } from "../email-sender/emailSender.service";
 import { PasswordResetCodeEntity } from "./passwordResetCode/passwordResetCode.entity";
 import { randomBytes } from "crypto";
 import { CloudLogger } from "../logger/cloud.logger";
+import axios from "axios";
+import { RecaptchaService } from "../auth/recaptcha/recaptcha.service";
 
 @Injectable()
 export class UserService {
@@ -27,28 +29,36 @@ export class UserService {
     private readonly authService: AuthService,
 
     private readonly emailSender: EmailSenderService,
+
+    private readonly recaptchaService: RecaptchaService, 
   ) { }
 
   async createUser(userData: CreateUserDto) {
     this.logger.log(`Tentando criar usuário: ${userData.email}`);
-    try {
-      const userEntity = new UserEntity();
-      const hashedPassword = await this.authService.hashPassword(userData.password);
 
+    try {
+      if (!userData.recaptchaToken) {
+        throw new BadRequestException("hCaptcha token é obrigatório.");
+      }
+
+      await this.recaptchaService.validate(userData.recaptchaToken);
+
+      const userEntity = new UserEntity();
       userEntity.username = userData.username;
       userEntity.email = userData.email;
-      userEntity.password = hashedPassword;
+      userEntity.password = await this.authService.hashPassword(userData.password);
 
       const savedUser = await this.userRepository.save(userEntity);
       this.logger.log(`Usuário criado com sucesso: ${savedUser.email}`);
       return savedUser;
-    }
+    } 
     catch (err) {
       this.logger.error(`Erro ao criar usuário: ${err.message}`, err.stack);
       throw new BadRequestException(`Erro ao criar usuário: ${err.message}`);
     }
   }
 
+  
   async getUsers() {
     this.logger.log(`Buscando todos os usuários`);
     try {
