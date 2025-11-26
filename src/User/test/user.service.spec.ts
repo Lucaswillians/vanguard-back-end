@@ -7,6 +7,7 @@ import { AuthService } from '../../auth/auth.service';
 import { EmailSenderService } from '../../email-sender/emailSender.service';
 import { NotFoundException } from '@nestjs/common';
 import { UpdateUserDto } from '../dto/UpdateUser.dto';
+import { RecaptchaService } from '../../auth/recaptcha/recaptcha.service';
 
 describe('UserService', () => {
   let service: UserService;
@@ -61,6 +62,12 @@ describe('UserService', () => {
           provide: EmailSenderService,
           useValue: { sendEmail: jest.fn().mockResolvedValue(true) },
         },
+        {
+          provide: RecaptchaService,
+          useValue: {
+            validate: jest.fn().mockResolvedValue(true), 
+          },
+        }
       ],
     }).compile();
 
@@ -70,7 +77,6 @@ describe('UserService', () => {
     authService = module.get(AuthService);
     emailSender = module.get(EmailSenderService);
   });
-
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -87,6 +93,7 @@ describe('UserService', () => {
         username: 'user1',
         email: 'user1@example.com',
         password: 'pass123',
+        recaptchaToken: 'test-token'
       });
 
       expect(authService.hashPassword).toHaveBeenCalledWith('pass123');
@@ -137,6 +144,7 @@ describe('UserService', () => {
         username: 'newUsername',
         email: 'new@example.com',
         password: 'newPassword',
+        recaptchaToken: 'test-token'
       };
 
       const hashedPassword = 'hashedPassword';
@@ -159,6 +167,7 @@ describe('UserService', () => {
         username: 'newUsername',
         email: 'new@example.com',
         password: 'newPassword',
+        recaptchaToken: 'test-token'
       };
       jest.spyOn(userRepo, 'preload').mockResolvedValue(null);
 

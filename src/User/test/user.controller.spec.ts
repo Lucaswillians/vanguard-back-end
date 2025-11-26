@@ -5,6 +5,7 @@ import { AuthGuard } from '../../auth/auth.guard';
 import { CreateUserDto } from '../dto/CreateUser.dto';
 import { GetUserDto } from '../dto/GetUset.dto';
 import { UpdateUserDto } from '../dto/UpdateUser.dto';
+import { RecaptchaService } from '../../auth/recaptcha/recaptcha.service';
 
 describe('UserController', () => {
   let controller: UserController;
@@ -33,6 +34,7 @@ describe('UserController', () => {
       controllers: [UserController],
       providers: [
         { provide: UserService, useValue: mockUserService },
+        { provide: RecaptchaService, useValue: { verifyRecaptcha: jest.fn() } },
       ],
     })
       .overrideGuard(AuthGuard)

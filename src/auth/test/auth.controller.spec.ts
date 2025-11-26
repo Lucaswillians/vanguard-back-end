@@ -40,6 +40,7 @@ describe('AuthController', () => {
       email: 'test@test.com',
       password: '123456',
       username: 'TestUser',
+      recaptchaToken: 'test-token'
     };
 
     it('deve lançar UnauthorizedException se exceder tentativas', async () => {
