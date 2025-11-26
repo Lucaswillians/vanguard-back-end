@@ -5,7 +5,7 @@ import { CloudLogger } from './logger/cloud.logger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    // logger: new CloudLogger('Backend'),
+    logger: new CloudLogger('Backend'),
   });
 
   app.enableCors({
