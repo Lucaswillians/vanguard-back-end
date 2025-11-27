@@ -10,7 +10,6 @@ export class UserController {
   @Inject()
   private userService: UserService;
 
-  // --------------------- Usuários CRUD ---------------------
   @Post()
   async postUser(@Body() userData: CreateUserDto) {
     const userCreated = await this.userService.createUser(userData);
