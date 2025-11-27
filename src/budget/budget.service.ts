@@ -33,7 +33,7 @@ export class BudgetService {
     private readonly carApiService: CarService,
     private readonly driverApiService: DriverService,
     private readonly http: HttpService,
-    @Inject(CACHE_MANAGER) private cache: Cache,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
 
   ) { }
 

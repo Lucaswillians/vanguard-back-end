@@ -2,9 +2,9 @@ import { LoggerService } from '@nestjs/common';
 import axios from 'axios';
 
 export class CloudLogger implements LoggerService {
-  private endpoint = 'https://logs.collector.na-01.cloud.solarwinds.com/v1/logs';
-  private token = process.env.PAPERTRAIL_TOKEN;
-  private context?: string;
+  private readonly endpoint = 'https://logs.collector.na-01.cloud.solarwinds.com/v1/logs';
+  private readonly token = process.env.PAPERTRAIL_TOKEN;
+  private readonly context?: string;
 
   constructor(context?: string) {
     this.context = context;

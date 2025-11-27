@@ -18,7 +18,7 @@ export class GeocodeApiService {
 
   constructor(
     private readonly http: HttpService,
-    @Inject(CACHE_MANAGER) private cache: Cache,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) { }
 
   @CacheKey('geocode-city')
