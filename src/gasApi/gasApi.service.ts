@@ -21,7 +21,7 @@ export class GasApiService {
 
   constructor(
     private readonly http: HttpService,
-    @Inject(CACHE_MANAGER) private cache: Cache,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) { }
 
   @CacheKey('diesel-sc')
