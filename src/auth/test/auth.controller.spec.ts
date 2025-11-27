@@ -51,7 +51,7 @@ describe('AuthController', () => {
       expect(rateLimiterService.checkLoginAttempt).toHaveBeenCalledWith('some-ip', 'test@test.com');
     });
 
-    it('deve retornar token e setar cookie no sucesso', async () => {
+    it('deve retornar somente a mensagem e setar o cookie no sucesso', async () => {
       rateLimiterService.checkLoginAttempt.mockResolvedValueOnce(true);
       authService.signIn.mockResolvedValueOnce({
         access_token: 'token123',
@@ -62,7 +62,6 @@ describe('AuthController', () => {
 
       expect(result).toEqual({
         message: 'Login realizado com sucesso!',
-        accessToken: 'token123',
       });
 
       expect(res.cookie).toHaveBeenCalledWith(
@@ -75,6 +74,7 @@ describe('AuthController', () => {
         }),
       );
     });
+
   });
 
   describe('logout', () => {
