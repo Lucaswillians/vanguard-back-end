@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger, UseInterceptors, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, UseInterceptors, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BudgetEntity } from './budget.entity';
@@ -16,7 +16,7 @@ import { GetTripDetails } from './dto/GetTripDetails.dto';
 import { UpdateBudgetStatusDto } from './dto/UpdateBudgetStatus.dto';
 import { calculateBudgetValues } from '../utils/budgetCalculator.util';
 import { CloudLogger } from '../logger/cloud.logger';
-import { CACHE_MANAGER, CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { CACHE_MANAGER, CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 
 @UseInterceptors(CacheInterceptor)
