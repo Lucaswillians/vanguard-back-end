@@ -44,7 +44,6 @@ export class AuthController {
 
     return {
       message: "Login realizado com sucesso!",
-      accessToken: token.access_token,
     };
   }
 
