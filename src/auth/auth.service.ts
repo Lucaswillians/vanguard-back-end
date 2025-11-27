@@ -1,5 +1,5 @@
 import { RecaptchaService } from './recaptcha/recaptcha.service';
-import { Inject, Injectable, Logger, UnauthorizedException, forwardRef } from "@nestjs/common";
+import { Inject, Injectable, UnauthorizedException, forwardRef } from "@nestjs/common";
 import * as bcrypt from 'bcrypt';
 import { JwtService } from "@nestjs/jwt";
 import { RateLimiterService } from "./rate-limiter/rateLimiter.service";

@@ -1,6 +1,5 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import axios from "axios";
-import qs from "qs";
 
 @Injectable()
 export class RecaptchaService {

@@ -1,6 +1,6 @@
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { Inject, Injectable, NotFoundException, BadRequestException, forwardRef, Logger } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException, BadRequestException, forwardRef } from "@nestjs/common";
 import { UserEntity } from "./user.entity";
 import { AuthService } from "../auth/auth.service";
 import { GetUserDto } from "./dto/GetUset.dto";
@@ -10,7 +10,6 @@ import { EmailSenderService } from "../email-sender/emailSender.service";
 import { PasswordResetCodeEntity } from "./passwordResetCode/passwordResetCode.entity";
 import { randomBytes } from "crypto";
 import { CloudLogger } from "../logger/cloud.logger";
-import axios from "axios";
 import { RecaptchaService } from "../auth/recaptcha/recaptcha.service";
 
 @Injectable()
