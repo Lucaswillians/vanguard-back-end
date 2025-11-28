@@ -5,6 +5,7 @@ import { JwtService } from "@nestjs/jwt";
 import { RateLimiterService } from "./rate-limiter/rateLimiter.service";
 import { UserService } from "../User/user.service";
 import { CloudLogger } from '../logger/cloud.logger';
+import { TwoFactorService } from './twoFactor/twoFactor.service';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +23,8 @@ export class AuthService {
     private readonly rateLimiterService: RateLimiterService,
 
     private readonly recaptchaService: RecaptchaService, 
+
+    private readonly twoFactorService: TwoFactorService
   ) {}
 
   async hashPassword(password: string): Promise<string> {
@@ -34,7 +37,7 @@ export class AuthService {
     return bcrypt.compare(plainPassword, hashedPassword);
   }
 
-  async signIn(email: string, password: string, ip: string, recaptchaToken: string) {
+  async signIn(email: string, password: string, ip: string, recaptchaToken: string): Promise<SignInResult> {
     this.logger.log(`Attempting login for user: ${email} from IP: ${ip}`);
 
     await this.recaptchaService.validate(recaptchaToken);
@@ -61,19 +64,17 @@ export class AuthService {
     }
 
     await this.rateLimiterService.resetAttempts(ip, email);
+    await this.twoFactorService.createCode(user.email);
 
-    const payload = { sub: user.id, email: user.email };
-    const accessToken = await this.jwtService.signAsync(payload, {
-      secret: process.env.JWT_SECRET,
-      expiresIn: process.env.JWT_EXPIRATION,
-    });
+    this.logger.log(`Waiting two factor code for user: ${email}`);
 
-    this.logger.log(`Login successful for user: ${email}`);
     return {
-      message: 'Login successfully',
-      access_token: accessToken,
-    };
+      message: '2FA required',
+      twoFactorRequired: true,
+      email: user.email,
+    } satisfies SignIn2FA;
   }
+
 
   async verifyToken(token: string) {
     this.logger.log('Verifying JWT token');
@@ -86,5 +87,22 @@ export class AuthService {
       this.logger.warn('Token verification failed', err.stack);
       throw new UnauthorizedException('Invalid token');
     }
+  }
+
+  async verify2FA(email: string, code: string) {
+    await this.twoFactorService.validateCode(email, code);
+
+    const user = await this.userService.getOneJWTverify(email);
+
+    const payload = { sub: user.id, email: user.email };
+    const token = await this.jwtService.signAsync(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: process.env.JWT_EXPIRATION
+    });
+
+    return {
+      message: "Login completo com 2FA",
+      access_token: token
+    };
   }
 }
