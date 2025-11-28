@@ -96,6 +96,12 @@ Integração com serviços baseados no OpenStreetMap:
 ---
 
 ## ⚙️ Como Rodar o Projeto
+```
+git clone <[seu-repositório](https://github.com/Lucaswillians/vanguard-back-end)>
+
+cd vanguard-back-end
+```
+
 
 ### **1. Criar o arquivo `.env.local`**
 Inclua todas as variáveis necessárias para:
