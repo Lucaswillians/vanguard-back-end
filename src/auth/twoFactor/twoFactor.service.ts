@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { randomBytes } from "crypto";
 import { TwoFactorCodeEntity } from "./twoFactor.entity";
-import { EmailSenderService } from "src/email-sender/emailSender.service";
+import { EmailSenderService } from "../../email-sender/emailSender.service";
 
 @Injectable()
 export class TwoFactorService {
