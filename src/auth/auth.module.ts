@@ -9,6 +9,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoginAttempt } from './rate-limiter/loginAttemp.entity';
 import { RateLimiterService } from './rate-limiter/rateLimiter.service';
 import { RecaptchaService } from './recaptcha/recaptcha.service';
+import { TwoFactorModule } from './twoFactor/twoFactor.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { RecaptchaService } from './recaptcha/recaptcha.service';
         signOptions: { expiresIn: '5m' },
       }),
     }),
+    TwoFactorModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, RateLimiterService, RecaptchaService],
